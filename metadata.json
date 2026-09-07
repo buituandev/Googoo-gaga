@@ -1,0 +1,7 @@
+{
+  "name": "AI Translator",
+  "description": "Context-aware AI translation with cultural nuances, idioms, and slang explanations powered by Gemini.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
