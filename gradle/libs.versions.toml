@@ -10,7 +10,7 @@ lifecycleRuntimeCompose = "2.11.0"
 activityCompose = "1.13.0"
 kotlin = "2.4.20"
 composeBom = "2026.08.00"
-googleDevtoolsKsp = "2.3.6"
+googleDevtoolsKsp = "2.3.10"
 multiplatformMarkdownRendererM3 = "0.45.0"
 roomRuntime = "2.8.4"
 roomKtx = "2.8.4"
@@ -33,6 +33,9 @@ secretsGradlePlugin = "2.0.1"
 googleServices = "4.5.0"
 material3 = "1.5.0-alpha27"
 squircleShape = "5.4.0"
+mlkitLanguageId = "17.0.6"
+kotlinxCoroutinesPlayServices = "1.11.0"
+graphicsShapes = "1.1.0"
 
 
 [libraries]
@@ -78,6 +81,9 @@ firebase-ai = { group = "com.google.firebase", name = "firebase-ai" }
 firebase-appcheck-recaptcha = { group = "com.google.firebase", name = "firebase-appcheck-recaptcha" }
 firebase-appcheck-debug = { group = "com.google.firebase", name = "firebase-appcheck-debug" }
 squircle-shape = { module = "com.stoyanvuchev:squircle-shape", version.ref = "squircleShape" }
+mlkit-language-id = { group = "com.google.mlkit", name = "language-id", version.ref = "mlkitLanguageId" }
+kotlinx-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-play-services", version.ref = "kotlinxCoroutinesPlayServices" }
+androidx-graphics-shapes = { group = "androidx.graphics", name = "graphics-shapes", version.ref = "graphicsShapes" }
 
 
 [plugins]

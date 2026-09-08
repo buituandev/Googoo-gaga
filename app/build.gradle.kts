@@ -11,14 +11,18 @@ plugins {
 
 android {
   namespace = "com.example"
-  compileSdk { version = release(37) { minorApiLevel = 1 } }
+  compileSdk {
+    version = release(37) {
+      minorApiLevel = 2
+    }
+  }
 
   defaultConfig {
     applicationId = "com.techfox.gugugaga"
     minSdk = 24
     targetSdk = 37
-    versionCode = 1
-    versionName = "1.0"
+    versionCode = 3
+    versionName = "1.1.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -86,7 +90,10 @@ dependencies {
   // Uncomment to use Firestore:
   // implementation(libs.firebase.firestore)
   implementation(libs.squircle.shape)
+  implementation(libs.androidx.graphics.shapes)
   implementation(libs.multiplatform.markdown.renderer.m3)
+  implementation(libs.mlkit.language.id)
+  implementation(libs.kotlinx.coroutines.play.services)
 
   // Uncomment ALL FOUR of the following dependencies together to use Firebase Auth and Google
   // Sign-In via Credential Manager:

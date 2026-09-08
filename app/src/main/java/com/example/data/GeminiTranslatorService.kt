@@ -171,7 +171,69 @@ class GeminiTranslatorService {
         }
     }
 
+    suspend fun fetchAvailableModels(apiKey: String): Result<List<String>> = withContext(Dispatchers.IO) {
+        val trimmedKey = apiKey.trim()
+        if (trimmedKey.isEmpty()) {
+            return@withContext Result.success(DEFAULT_MODELS)
+        }
+
+        try {
+            val url = "https://generativelanguage.googleapis.com/v1beta/models?key=$trimmedKey&pageSize=100"
+            val request = Request.Builder()
+                .url(url)
+                .get()
+                .build()
+
+            val response = client.newCall(request).execute()
+            val responseBody = response.body.string()
+
+            if (!response.isSuccessful) {
+                return@withContext Result.failure(Exception("HTTP ${response.code}: $responseBody"))
+            }
+
+            val parsed = parseModelsJson(responseBody)
+            Result.success(parsed.ifEmpty { DEFAULT_MODELS })
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     companion object {
+        val DEFAULT_MODELS = listOf("gemini-3.1-flash-lite", "gemma-4-26b-a4b-it", "gemini-3.8-flash")
+
+        private enum class Section { DIRECT, KEY_TERMS, CULTURAL }
+
+        fun parseModelsJson(jsonStr: String): List<String> {
+            if (jsonStr.isBlank()) return emptyList()
+            return try {
+                val json = JSONObject(jsonStr)
+                val modelsArray = json.optJSONArray("models") ?: return emptyList()
+                val result = mutableListOf<String>()
+                for (i in 0 until modelsArray.length()) {
+                    val obj = modelsArray.optJSONObject(i) ?: continue
+                    val name = obj.optString("name", "")
+                    val supportedMethods = obj.optJSONArray("supportedGenerationMethods")
+                    val supportsGenerateContent = if (supportedMethods != null) {
+                        var hasMethod = false
+                        for (j in 0 until supportedMethods.length()) {
+                            if (supportedMethods.optString(j) == "generateContent") {
+                                hasMethod = true
+                                break
+                            }
+                        }
+                        hasMethod
+                    } else true
+
+                    if (supportsGenerateContent && name.isNotBlank()) {
+                        val cleanName = name.removePrefix("models/")
+                        result.add(cleanName)
+                    }
+                }
+                result
+            } catch (e: Exception) {
+                emptyList()
+            }
+        }
         fun parseTranslation(
             rawText: String,
             sourceText: String,
@@ -179,45 +241,96 @@ class GeminiTranslatorService {
             isShortText: Boolean = false,
             enableInsight: Boolean = true
         ): TranslationOutput {
-            var direct = ""
-            var keyTermsRaw = ""
-            var cultural = ""
-            val keyTermsList = mutableListOf<KeyTermInsight>()
+            if (rawText.isBlank()) {
+                return TranslationOutput(
+                    sourceText = sourceText,
+                    targetLanguage = targetLanguage,
+                    directTranslation = "",
+                    culturalContext = "",
+                    keyTerms = emptyList()
+                )
+            }
 
-            val directRegex = Regex("(?i)\\*{0,2}(?:Direct Translation|Translation):?\\*{0,2}\\s*")
-            val keyTermsRegex = Regex("(?i)\\*{0,2}(?:Key Terms|Key Words|Vocabulary|Interactive Terms):?\\*{0,2}\\s*")
-            val culturalRegex = Regex("(?i)\\*{0,2}(?:Cultural Context|Cultural Insights?|Insights?|Context):?\\*{0,2}\\s*")
+            var currentSection = Section.DIRECT
 
-            val directMatch = directRegex.find(rawText)
-            val keyTermsMatch = keyTermsRegex.find(rawText)
-            val culturalMatch = culturalRegex.find(rawText)
+            val directLines = mutableListOf<String>()
+            val keyTermLines = mutableListOf<String>()
+            val culturalLines = mutableListOf<String>()
 
-            if (directMatch != null) {
-                val directStart = directMatch.range.last + 1
-                val directEnd = keyTermsMatch?.range?.first ?: culturalMatch?.range?.first ?: rawText.length
-                direct = rawText.substring(directStart, directEnd).trim()
+            // Strict line-start anchored header matchers (supports optional #, **, colons, etc.)
+            val directHeaderRegex = Regex("^(?:#{1,4}\\s*)?\\*{0,2}(?:Direct Translation|Translation)\\s*:?\\*{0,2}\\s*(.*)$", RegexOption.IGNORE_CASE)
+            val keyTermsHeaderRegex = Regex("^(?:#{1,4}\\s*)?\\*{0,2}(?:Key Terms|Key Words|Interactive Terms|Vocabulary|Interactive Key Terms|Key Terms & Vocabulary|Key Terms / Vocabulary)\\s*:?\\*{0,2}\\s*(.*)$", RegexOption.IGNORE_CASE)
+            val culturalHeaderRegex = Regex("^(?:#{1,4}\\s*)?\\*{0,2}(?:Cultural Context|Cultural Insights?|Insights?|Context|Linguistic & Cultural Context|Linguistic Nuances?|Linguistic Context)\\s*:?\\*{0,2}\\s*(.*)$", RegexOption.IGNORE_CASE)
 
-                if (keyTermsMatch != null) {
-                    val keyTermsStart = keyTermsMatch.range.last + 1
-                    val keyTermsEnd = culturalMatch?.range?.first ?: rawText.length
-                    keyTermsRaw = rawText.substring(keyTermsStart, keyTermsEnd).trim()
+            // Pattern for a key term line (e.g. "- Term | Original | Type | Explanation" or "• Term | Original | Explanation")
+            val keyTermLinePattern = Regex("^(?:[-*•]|\\d+\\.)\\s*[^|]+\\|[^|]+(?:\\|.*)?$")
+
+            val allLines = rawText.lines()
+
+            for (line in allLines) {
+                val trimmedLine = line.trim()
+                if (trimmedLine.isEmpty()) {
+                    when (currentSection) {
+                        Section.DIRECT -> if (directLines.isNotEmpty()) directLines.add("")
+                        Section.KEY_TERMS -> {} // skip blank lines in key terms
+                        Section.CULTURAL -> if (culturalLines.isNotEmpty()) culturalLines.add("")
+                    }
+                    continue
                 }
 
-                if (culturalMatch != null) {
-                    val culturalStart = culturalMatch.range.last + 1
-                    cultural = rawText.substring(culturalStart).trim()
-                }
-            } else {
-                val lines = rawText.lines().map { it.trim() }.filter { it.isNotEmpty() }
-                if (lines.isNotEmpty()) {
-                    direct = lines[0].replace(Regex("^\\*{0,2}(Direct Translation|Translation):?\\*{0,2}\\s*", RegexOption.IGNORE_CASE), "")
-                    cultural = if (isShortText || !enableInsight) "" else lines.drop(1).joinToString("\n\n").replace(Regex("^\\*{0,2}(?:Cultural Context|Cultural Insights?|Insights?|Context):?\\*{0,2}\\s*", RegexOption.IGNORE_CASE), "")
+                val directHeaderMatch = directHeaderRegex.matchEntire(trimmedLine)
+                val keyTermsHeaderMatch = keyTermsHeaderRegex.matchEntire(trimmedLine)
+                val culturalHeaderMatch = culturalHeaderRegex.matchEntire(trimmedLine)
+
+                when {
+                    directHeaderMatch != null -> {
+                        currentSection = Section.DIRECT
+                        val trailingContent = directHeaderMatch.groupValues.getOrNull(1)?.trim().orEmpty()
+                            .removeSurrounding("**").removeSurrounding("*").removePrefix(":").removeSurrounding("**").removeSurrounding("*").trim()
+                        if (trailingContent.isNotEmpty()) {
+                            directLines.add(trailingContent)
+                        }
+                    }
+                    keyTermsHeaderMatch != null -> {
+                        currentSection = Section.KEY_TERMS
+                        val trailingContent = keyTermsHeaderMatch.groupValues.getOrNull(1)?.trim().orEmpty()
+                            .removeSurrounding("**").removeSurrounding("*").removePrefix(":").removeSurrounding("**").removeSurrounding("*").trim()
+                        if (trailingContent.isNotEmpty() && !trailingContent.equals("None", ignoreCase = true)) {
+                            keyTermLines.add(trailingContent)
+                        }
+                    }
+                    culturalHeaderMatch != null -> {
+                        currentSection = Section.CULTURAL
+                        val trailingContent = culturalHeaderMatch.groupValues.getOrNull(1)?.trim().orEmpty()
+                            .removeSurrounding("**").removeSurrounding("*").removePrefix(":").removeSurrounding("**").removeSurrounding("*").trim()
+                        if (trailingContent.isNotEmpty()) {
+                            culturalLines.add(trailingContent)
+                        }
+                    }
+                    else -> {
+                        if (keyTermLinePattern.matches(trimmedLine) && currentSection != Section.DIRECT) {
+                            keyTermLines.add(trimmedLine)
+                        } else {
+                            when (currentSection) {
+                                Section.DIRECT -> directLines.add(trimmedLine)
+                                Section.KEY_TERMS -> {
+                                    if (keyTermLinePattern.matches(trimmedLine)) {
+                                        keyTermLines.add(trimmedLine)
+                                    } else if (!trimmedLine.equals("None", ignoreCase = true) && !trimmedLine.startsWith("[") && !trimmedLine.endsWith("]")) {
+                                        keyTermLines.add(trimmedLine)
+                                    }
+                                }
+                                Section.CULTURAL -> culturalLines.add(trimmedLine)
+                            }
+                        }
+                    }
                 }
             }
 
-            // Clean any leftover markdown wrapper asterisks on direct translation
-            direct = direct.trim().removeSurrounding("**").removeSurrounding("*").removePrefix(":").trim()
-            cultural = cultural.trim().removePrefix(":").trim()
+            var direct = directLines.joinToString("\n").trim()
+                .removeSurrounding("**").removeSurrounding("*").removePrefix(":").trim()
+            var cultural = culturalLines.joinToString("\n").trim()
+                .removePrefix(":").trim()
 
             if (isShortText || !enableInsight) {
                 cultural = ""
@@ -225,40 +338,38 @@ class GeminiTranslatorService {
                 if (cultural.isBlank()) cultural = "No additional insights detected."
             }
 
-            // Parse keyTermsRaw into List<KeyTermInsight>
-            if (keyTermsRaw.isNotBlank() && !keyTermsRaw.equals("None", ignoreCase = true)) {
-                val termLines = keyTermsRaw.lines()
-                for (line in termLines) {
-                    val cleanedLine = line.trim()
-                        .removePrefix("-")
-                        .removePrefix("*")
-                        .removePrefix("•")
-                        .replace(Regex("^\\d+\\.\\s*"), "")
-                        .trim()
-                    if (cleanedLine.isBlank() || cleanedLine.equals("None", ignoreCase = true)) continue
+            val keyTermsList = mutableListOf<KeyTermInsight>()
+            for (line in keyTermLines) {
+                val cleanedLine = line.trim()
+                    .removePrefix("-")
+                    .removePrefix("*")
+                    .removePrefix("•")
+                    .replace(Regex("^\\d+\\.\\s*"), "")
+                    .trim()
+                if (cleanedLine.isBlank() || cleanedLine.equals("None", ignoreCase = true)) continue
+                if (cleanedLine.startsWith("[") && cleanedLine.endsWith("]")) continue
 
-                    val parts = cleanedLine.split("|").map { it.trim().removeSurrounding("**").removeSurrounding("\"").removeSurrounding("'") }
-                    if (parts.size >= 4) {
-                        val tTerm = parts[0].trim()
-                        val oTerm = parts[1].trim()
-                        val type = parts[2].trim().ifBlank { "Insight" }
-                        val explanation = parts.subList(3, parts.size).joinToString(" | ").trim()
-                        if (tTerm.isNotBlank() && explanation.isNotBlank()) {
-                            keyTermsList.add(KeyTermInsight(translatedTerm = tTerm, originalTerm = oTerm, type = type, explanation = explanation))
-                        }
-                    } else if (parts.size == 3) {
-                        val tTerm = parts[0].trim()
-                        val oTerm = parts[1].trim()
-                        val explanation = parts[2].trim()
-                        if (tTerm.isNotBlank() && explanation.isNotBlank()) {
-                            keyTermsList.add(KeyTermInsight(translatedTerm = tTerm, originalTerm = oTerm, type = "Insight", explanation = explanation))
-                        }
-                    } else if (parts.size == 2) {
-                        val tTerm = parts[0].trim()
-                        val explanation = parts[1].trim()
-                        if (tTerm.isNotBlank() && explanation.isNotBlank()) {
-                            keyTermsList.add(KeyTermInsight(translatedTerm = tTerm, originalTerm = "", type = "Insight", explanation = explanation))
-                        }
+                val parts = cleanedLine.split("|").map { it.trim().removeSurrounding("**").removeSurrounding("\"").removeSurrounding("'") }
+                if (parts.size >= 4) {
+                    val tTerm = parts[0].trim()
+                    val oTerm = parts[1].trim()
+                    val type = parts[2].trim().ifBlank { "Insight" }
+                    val explanation = parts.subList(3, parts.size).joinToString(" | ").trim()
+                    if (tTerm.isNotBlank() && explanation.isNotBlank()) {
+                        keyTermsList.add(KeyTermInsight(translatedTerm = tTerm, originalTerm = oTerm, type = type, explanation = explanation))
+                    }
+                } else if (parts.size == 3) {
+                    val tTerm = parts[0].trim()
+                    val oTerm = parts[1].trim()
+                    val explanation = parts[2].trim()
+                    if (tTerm.isNotBlank() && explanation.isNotBlank()) {
+                        keyTermsList.add(KeyTermInsight(translatedTerm = tTerm, originalTerm = oTerm, type = "Insight", explanation = explanation))
+                    }
+                } else if (parts.size == 2) {
+                    val tTerm = parts[0].trim()
+                    val explanation = parts[1].trim()
+                    if (tTerm.isNotBlank() && explanation.isNotBlank()) {
+                        keyTermsList.add(KeyTermInsight(translatedTerm = tTerm, originalTerm = "", type = "Insight", explanation = explanation))
                     }
                 }
             }

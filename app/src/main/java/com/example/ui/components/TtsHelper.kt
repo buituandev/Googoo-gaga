@@ -11,6 +11,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import com.google.mlkit.nl.languageid.LanguageIdentification
 import java.util.Locale
 
 /**
@@ -25,11 +26,41 @@ class TtsController(
 }
 
 /**
+ * Detects appropriate [Locale] based on script or character range for natural TTS pronunciation.
+ */
+fun detectLocaleFromText(text: String): Locale {
+    val trimmed = text.trim()
+    if (trimmed.isEmpty()) return Locale.getDefault()
+    return when {
+        // Japanese: Hiragana or Katakana
+        trimmed.any { it in '\u3040'..'\u309F' || it in '\u30A0'..'\u30FF' } -> Locale.JAPANESE
+        // Korean: Hangul Syllables or Jamo
+        trimmed.any { it in '\uAC00'..'\uD7AF' || it in '\u1100'..'\u11FF' || it in '\u3130'..'\u318F' } -> Locale.KOREAN
+        // Chinese / Hanzi: CJK Ideographs (when without Kana)
+        trimmed.any { it in '\u4E00'..'\u9FFF' || it in '\u3400'..'\u4DBF' } -> Locale.SIMPLIFIED_CHINESE
+        // Russian / Cyrillic
+        trimmed.any { it in '\u0400'..'\u04FF' } -> Locale.forLanguageTag("ru-RU")
+        // Arabic
+        trimmed.any { it in '\u0600'..'\u06FF' || it in '\u0750'..'\u077F' } -> Locale.forLanguageTag("ar")
+        // Thai
+        trimmed.any { it in '\u0E00'..'\u0E7F' } -> Locale.forLanguageTag("th-TH")
+        // Hindi / Devanagari
+        trimmed.any { it in '\u0900'..'\u097F' } -> Locale.forLanguageTag("hi-IN")
+        // Vietnamese specific diacritics
+        trimmed.any { "đĐơƠưƯàáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộùúủũụỳýỷỹỵ".contains(it, ignoreCase = true) } -> Locale.forLanguageTag("vi-VN")
+        else -> Locale.ENGLISH
+    }
+}
+
+/**
  * Resolves a natural language name or tag to the appropriate [Locale] for TTS playback.
  */
-fun resolveLocaleForLanguage(language: String): Locale {
+fun resolveLocaleForLanguage(language: String, textToSpeak: String = ""): Locale {
     val clean = language.trim().lowercase(Locale.ROOT)
     return when {
+        clean == "auto" || clean.isBlank() -> {
+            if (textToSpeak.isNotBlank()) detectLocaleFromText(textToSpeak) else Locale.getDefault()
+        }
         clean == "vietnamese" || clean == "vi" || clean.startsWith("vi-") -> Locale.forLanguageTag("vi-VN")
         clean == "english" || clean == "en" || clean.startsWith("en-") -> Locale.ENGLISH
         clean == "spanish" || clean == "es" || clean.startsWith("es-") -> Locale.forLanguageTag("es-ES")
@@ -49,9 +80,11 @@ fun resolveLocaleForLanguage(language: String): Locale {
         else -> {
             try {
                 val candidate = Locale.forLanguageTag(language)
-                if (candidate.language.isNotBlank()) candidate else Locale.getDefault()
+                if (candidate.language.isNotBlank()) candidate else {
+                    if (textToSpeak.isNotBlank()) detectLocaleFromText(textToSpeak) else Locale.getDefault()
+                }
             } catch (_: Exception) {
-                Locale.getDefault()
+                if (textToSpeak.isNotBlank()) detectLocaleFromText(textToSpeak) else Locale.getDefault()
             }
         }
     }
@@ -115,12 +148,41 @@ fun rememberTtsController(): TtsController {
                     currentSpeakingText = null
                 } else if (text.isNotBlank()) {
                     tts?.stop()
-                    val locale = resolveLocaleForLanguage(language)
-                    tts?.language = locale
-                    val utteranceId = "TtsUtterance_${System.currentTimeMillis()}"
                     currentSpeakingText = text
                     isSpeaking = true
-                    tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
+
+                    val clean = language.trim().lowercase(Locale.ROOT)
+                    if (clean == "auto" || clean.isBlank()) {
+                        try {
+                            LanguageIdentification.getClient().identifyLanguage(text)
+                                .addOnSuccessListener { code ->
+                                    val locale = if (code != "und" && !code.isNullOrBlank()) {
+                                        resolveLocaleForLanguage(code, text)
+                                    } else {
+                                        detectLocaleFromText(text)
+                                    }
+                                    tts?.language = locale
+                                    val utteranceId = "TtsUtterance_${System.currentTimeMillis()}"
+                                    tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
+                                }
+                                .addOnFailureListener {
+                                    val locale = detectLocaleFromText(text)
+                                    tts?.language = locale
+                                    val utteranceId = "TtsUtterance_${System.currentTimeMillis()}"
+                                    tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
+                                }
+                        } catch (_: Throwable) {
+                            val locale = detectLocaleFromText(text)
+                            tts?.language = locale
+                            val utteranceId = "TtsUtterance_${System.currentTimeMillis()}"
+                            tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
+                        }
+                    } else {
+                        val locale = resolveLocaleForLanguage(language, text)
+                        tts?.language = locale
+                        val utteranceId = "TtsUtterance_${System.currentTimeMillis()}"
+                        tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
+                    }
                 }
             }
         )

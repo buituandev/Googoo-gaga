@@ -2,7 +2,11 @@ package com.example
 
 import com.example.data.GeminiTranslatorService
 import com.example.data.KeyTermInsight
+import com.example.data.LanguageDetector
 import com.example.data.TextSanitizer
+import com.example.ui.components.detectLocaleFromText
+import com.example.ui.components.resolveLocaleForLanguage
+import java.util.Locale
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -232,6 +236,169 @@ class ExampleUnitTest {
         assertEquals("Cố lên", output.keyTerms[0].translatedTerm)
         assertEquals("Hang in there", output.keyTerms[0].originalTerm)
         assertEquals("", output.culturalContext)
+    }
+
+    @Test
+    fun testDetectLocaleFromText_withVariousLanguages() {
+        // Japanese
+        assertEquals(Locale.JAPANESE, detectLocaleFromText("木漏れ日"))
+        assertEquals(Locale.JAPANESE, detectLocaleFromText("こんにちは"))
+        assertEquals(Locale.JAPANESE, detectLocaleFromText("カタカナ"))
+
+        // Korean
+        assertEquals(Locale.KOREAN, detectLocaleFromText("안녕하세요"))
+        assertEquals(Locale.KOREAN, detectLocaleFromText("눈치"))
+
+        // Chinese
+        assertEquals(Locale.SIMPLIFIED_CHINESE, detectLocaleFromText("你好世界"))
+
+        // Russian / Cyrillic
+        assertEquals("ru", detectLocaleFromText("Здравствуйте").language)
+
+        // Arabic
+        assertEquals("ar", detectLocaleFromText("مرحبا").language)
+
+        // Thai
+        assertEquals("th", detectLocaleFromText("สวัสดี").language)
+
+        // Vietnamese
+        assertEquals("vi", detectLocaleFromText("Xin chào bạn").language)
+        assertEquals("vi", detectLocaleFromText("cố lên").language)
+
+        // English / Latin default
+        assertEquals(Locale.ENGLISH, detectLocaleFromText("break a leg"))
+    }
+
+    @Test
+    fun testResolveLocaleForLanguage_withExplicitAndAutoLanguages() {
+        assertEquals(Locale.FRENCH, resolveLocaleForLanguage("French"))
+        assertEquals(Locale.GERMAN, resolveLocaleForLanguage("German"))
+        assertEquals(Locale.JAPANESE, resolveLocaleForLanguage("Japanese"))
+        assertEquals(Locale.ENGLISH, resolveLocaleForLanguage("English"))
+        assertEquals("vi", resolveLocaleForLanguage("Vietnamese").language)
+
+        // Auto mode with fallback text
+        assertEquals(Locale.JAPANESE, resolveLocaleForLanguage("auto", "木漏れ日"))
+        assertEquals(Locale.KOREAN, resolveLocaleForLanguage("auto", "눈치"))
+        assertEquals("vi", resolveLocaleForLanguage("auto", "Xin chào").language)
+        assertEquals(Locale.ENGLISH, resolveLocaleForLanguage("auto", "Break a leg"))
+    }
+
+    @Test
+    fun testLanguageDetector_fallbackIdentification() {
+        assertEquals("ja", LanguageDetector.identifyLanguageFallback("木漏れ日"))
+        assertEquals("ko", LanguageDetector.identifyLanguageFallback("안녕하세요"))
+        assertEquals("zh", LanguageDetector.identifyLanguageFallback("你好世界"))
+        assertEquals("vi", LanguageDetector.identifyLanguageFallback("cố lên nhé"))
+        assertEquals("ru", LanguageDetector.identifyLanguageFallback("Здравствуйте"))
+        assertEquals("ar", LanguageDetector.identifyLanguageFallback("مرحبا"))
+        assertEquals("th", LanguageDetector.identifyLanguageFallback("สวัสดี"))
+        assertEquals("en", LanguageDetector.identifyLanguageFallback("Break a leg"))
+    }
+
+    @Test
+    fun testIsSameLanguage() {
+        // Vietnamese match
+        assertTrue(LanguageDetector.isSameLanguage("vi", "Vietnamese"))
+        assertTrue(LanguageDetector.isSameLanguage("vietnamese", "Vietnamese"))
+        assertTrue(LanguageDetector.isSameLanguage("vi", "Tiếng Việt"))
+        assertTrue(LanguageDetector.isSameLanguage("vi", "vi"))
+
+        // English match
+        assertTrue(LanguageDetector.isSameLanguage("en", "English"))
+        assertTrue(LanguageDetector.isSameLanguage("english", "English"))
+        assertTrue(LanguageDetector.isSameLanguage("en", "Tiếng Anh"))
+
+        // Japanese, French, Spanish match
+        assertTrue(LanguageDetector.isSameLanguage("ja", "Japanese"))
+        assertTrue(LanguageDetector.isSameLanguage("fr", "French"))
+        assertTrue(LanguageDetector.isSameLanguage("es", "Spanish"))
+
+        // Other world languages (Turkish, Swedish, Polish, Italian, Dutch, Greek, Russian, Arabic)
+        assertTrue(LanguageDetector.isSameLanguage("tr", "Turkish"))
+        assertTrue(LanguageDetector.isSameLanguage("sv", "Swedish"))
+        assertTrue(LanguageDetector.isSameLanguage("pl", "Polish"))
+        assertTrue(LanguageDetector.isSameLanguage("it", "Italian"))
+        assertTrue(LanguageDetector.isSameLanguage("nl", "Dutch"))
+        assertTrue(LanguageDetector.isSameLanguage("el", "Greek"))
+        assertTrue(LanguageDetector.isSameLanguage("ru", "Russian"))
+        assertTrue(LanguageDetector.isSameLanguage("ar", "Arabic"))
+
+        // Different languages
+        assertFalse(LanguageDetector.isSameLanguage("en", "Vietnamese"))
+        assertFalse(LanguageDetector.isSameLanguage("vi", "English"))
+        assertFalse(LanguageDetector.isSameLanguage("ja", "English"))
+        assertFalse(LanguageDetector.isSameLanguage("tr", "German"))
+        assertFalse(LanguageDetector.isSameLanguage("und", "Vietnamese"))
+        assertFalse(LanguageDetector.isSameLanguage("auto", "Vietnamese"))
+    }
+
+    @Test
+    fun testParseModelsJson_filtersGenerateContentModels() {
+        val sampleJson = """
+            {
+              "models": [
+                {
+                  "name": "models/gemini-2.0-flash",
+                  "supportedGenerationMethods": ["generateContent", "countTokens"]
+                },
+                {
+                  "name": "models/gemini-1.5-pro",
+                  "supportedGenerationMethods": ["generateContent"]
+                },
+                {
+                  "name": "models/text-embedding-004",
+                  "supportedGenerationMethods": ["embedContent"]
+                }
+              ]
+            }
+        """.trimIndent()
+
+        val models = GeminiTranslatorService.parseModelsJson(sampleJson)
+        assertEquals(2, models.size)
+        assertEquals("gemini-2.0-flash", models[0])
+        assertEquals("gemini-1.5-pro", models[1])
+        assertFalse(models.contains("text-embedding-004"))
+    }
+
+    @Test
+    fun testParseModelsJson_withEmptyOrInvalidJson() {
+        assertEquals(emptyList<String>(), GeminiTranslatorService.parseModelsJson(""))
+        assertEquals(emptyList<String>(), GeminiTranslatorService.parseModelsJson("{}"))
+        assertEquals(emptyList<String>(), GeminiTranslatorService.parseModelsJson("invalid json"))
+    }
+
+    @Test
+    fun testParseTranslation_keyTermWithEmbeddedContextWord_doesNotTruncate() {
+        val raw = """
+            Direct Translation: Bạn nên xem xét bối cảnh trước khi đưa ra quyết định.
+
+            Key Terms:
+            - bối cảnh | context | Vocabulary | Từ mang nghĩa ngữ cảnh (Context: dùng nhiều trong phân tích hoặc giao tiếp hàng ngày).
+            - quyết định | decision | Vocabulary | Sự lựa chọn sau khi suy nghĩ kỹ.
+
+            Cultural Context:
+            - **Giao tiếp**: Nên cân nhắc kỹ lưỡng hoàn cảnh trước khi hành động.
+        """.trimIndent()
+
+        val output = GeminiTranslatorService.parseTranslation(
+            rawText = raw,
+            sourceText = "You should consider the context before making a decision.",
+            targetLanguage = "Vietnamese",
+            isShortText = false
+        )
+
+        assertEquals("Bạn nên xem xét bối cảnh trước khi đưa ra quyết định.", output.directTranslation)
+        assertEquals(2, output.keyTerms.size)
+        assertEquals("bối cảnh", output.keyTerms[0].translatedTerm)
+        assertEquals("context", output.keyTerms[0].originalTerm)
+        assertEquals("Vocabulary", output.keyTerms[0].type)
+        assertEquals("Từ mang nghĩa ngữ cảnh (Context: dùng nhiều trong phân tích hoặc giao tiếp hàng ngày).", output.keyTerms[0].explanation)
+        assertEquals("quyết định", output.keyTerms[1].translatedTerm)
+        assertEquals("decision", output.keyTerms[1].originalTerm)
+        assertEquals("Sự lựa chọn sau khi suy nghĩ kỹ.", output.keyTerms[1].explanation)
+        assertTrue(output.culturalContext.contains("- **Giao tiếp**: Nên cân nhắc kỹ lưỡng hoàn cảnh"))
+        assertFalse(output.culturalContext.contains("dùng nhiều trong phân tích"))
     }
 }
 

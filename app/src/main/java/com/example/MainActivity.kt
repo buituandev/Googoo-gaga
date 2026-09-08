@@ -1,5 +1,6 @@
 package com.example
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -11,11 +12,15 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.max
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Subtitles
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -34,15 +39,27 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.data.PreferencesManager
 import com.example.ui.HistoryScreen
 import com.example.ui.MainViewModel
 import com.example.ui.SettingsScreen
 import com.example.ui.TranslateScreen
+import com.example.ui.onboarding.OnboardingActivity
+import com.example.ui.subtitle.SubtitleScreen
+import com.example.ui.subtitle.SubtitleViewModel
 import com.example.ui.theme.MyApplicationTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val preferences = PreferencesManager(this)
+        if (!preferences.isOnboardingCompleted()) {
+            startActivity(Intent(this, OnboardingActivity::class.java))
+            finish()
+            return
+        }
+
         enableEdgeToEdge()
 
         setContent {
@@ -54,8 +71,12 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MainApp(viewModel: MainViewModel = viewModel()) {
+fun MainApp(
+    viewModel: MainViewModel = viewModel(),
+    subtitleViewModel: SubtitleViewModel = viewModel()
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val subtitleState by subtitleViewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(state.errorMessage) {
@@ -64,6 +85,21 @@ fun MainApp(viewModel: MainViewModel = viewModel()) {
             viewModel.dismissMessages()
         }
     }
+
+    LaunchedEffect(subtitleState.errorMessage) {
+        subtitleState.errorMessage?.let { error ->
+            snackbarHostState.showSnackbar(error)
+            subtitleViewModel.dismissMessages()
+        }
+    }
+
+    LaunchedEffect(subtitleState.successMessage) {
+        subtitleState.successMessage?.let { msg ->
+            snackbarHostState.showSnackbar(msg)
+            subtitleViewModel.dismissMessages()
+        }
+    }
+
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -93,10 +129,29 @@ fun MainApp(viewModel: MainViewModel = viewModel()) {
                     modifier = Modifier.testTag("nav_item_translate")
                 )
 
-                // Destination 2: History
+                // Destination 2: Subtitles
                 ShortNavigationBarItem(
                     selected = state.currentTab == 1,
                     onClick = { viewModel.switchTab(1) },
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Rounded.Subtitles,
+                            contentDescription = stringResource(R.string.nav_subtitles)
+                        )
+                    },
+                    label = {
+                        Text(
+                            text = stringResource(R.string.nav_subtitles),
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    },
+                    modifier = Modifier.testTag("nav_item_subtitles")
+                )
+
+                // Destination 3: History
+                ShortNavigationBarItem(
+                    selected = state.currentTab == 2,
+                    onClick = { viewModel.switchTab(2) },
                     icon = {
                         Icon(
                             imageVector = Icons.Rounded.History,
@@ -112,10 +167,10 @@ fun MainApp(viewModel: MainViewModel = viewModel()) {
                     modifier = Modifier.testTag("nav_item_history")
                 )
 
-                // Destination 3: Settings
+                // Destination 4: Settings
                 ShortNavigationBarItem(
-                    selected = state.currentTab == 2,
-                    onClick = { viewModel.switchTab(2) },
+                    selected = state.currentTab == 3,
+                    onClick = { viewModel.switchTab(3) },
                     icon = {
                         Icon(
                             imageVector = Icons.Rounded.Settings,
@@ -133,6 +188,10 @@ fun MainApp(viewModel: MainViewModel = viewModel()) {
             }
         }
     ) { innerPadding ->
+        val imeBottom = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
+        val navBottom = innerPadding.calculateBottomPadding()
+        val effectiveBottom = max(imeBottom, navBottom)
+
         AnimatedContent(
             targetState = state.currentTab,
             transitionSpec = {
@@ -148,7 +207,7 @@ fun MainApp(viewModel: MainViewModel = viewModel()) {
                     )
                 )
             },
-            modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding()),
+            modifier = Modifier.padding(bottom = effectiveBottom),
             label = "ScreenTransition"
         ) { tabIndex ->
             when (tabIndex) {
@@ -160,13 +219,30 @@ fun MainApp(viewModel: MainViewModel = viewModel()) {
                     onClearClicked = { viewModel.clearInput() },
                     onHistoryItemSelected = { viewModel.selectHistoryItem(it) }
                 )
-                1 -> HistoryScreen(
+                1 -> SubtitleScreen(
+                    state = subtitleState,
+                    onInputChanged = { subtitleViewModel.onInputTextChanged(it) },
+                    onFileLoaded = { name, content -> subtitleViewModel.onFileLoaded(name, content) },
+                    onTargetLanguageChanged = { subtitleViewModel.onTargetLanguageChanged(it) },
+                    onContextChanged = { subtitleViewModel.onContextDescriptionChanged(it) },
+                    onPresetSelected = { subtitleViewModel.onPresetSelected(it) },
+                    onCustomPromptChanged = { subtitleViewModel.onCustomPromptChanged(it) },
+                    onAddCharacter = { subtitleViewModel.addCharacter() },
+                    onUpdateCharacter = { id, name, desc -> subtitleViewModel.updateCharacter(id, name, desc) },
+                    onRemoveCharacter = { subtitleViewModel.removeCharacter(it) },
+                    onTranslateClicked = { subtitleViewModel.startTranslation() },
+                    onResumeClicked = { subtitleViewModel.resumeTranslation() },
+                    onDiscardResume = { subtitleViewModel.discardResumableJob() },
+                    onCancelClicked = { subtitleViewModel.cancelTranslation() },
+                    onClearClicked = { subtitleViewModel.clearInput() }
+                )
+                2 -> HistoryScreen(
                     state = state,
                     onHistoryItemSelected = { viewModel.selectHistoryItem(it) },
                     onDeleteItem = { viewModel.deleteHistoryItem(it) },
                     onClearAllHistory = { viewModel.clearAllHistory() }
                 )
-                2 -> SettingsScreen(
+                3 -> SettingsScreen(
                     state = state,
                     onApiKeyChanged = { viewModel.onApiKeyChanged(it) },
                     onModelChanged = { viewModel.onModelChanged(it) },

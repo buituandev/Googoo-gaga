@@ -39,6 +39,10 @@ class TranslationRepository(context: Context) {
         }
     }
 
+    suspend fun fetchAvailableModels(apiKey: String): Result<List<String>> {
+        return service.fetchAvailableModels(apiKey)
+    }
+
     suspend fun clearHistory() {
         dao.clearAll()
     }

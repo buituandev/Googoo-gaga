@@ -32,11 +32,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -61,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import com.example.data.KeyTermInsight
 import com.example.data.TranslationEntity
 import com.example.data.TranslationRepository
+import com.example.ui.components.ExpressiveIconButton
 import com.example.ui.components.InsightBottomSheet
 import com.example.ui.components.InteractiveTranslationText
 import com.example.ui.components.KeyTermBottomSheet
@@ -215,13 +214,12 @@ fun ProcessTextBottomSheet(
                     )
                 }
 
-                IconButton(onClick = onDismiss) {
-                    Icon(
-                        imageVector = Icons.Rounded.Close,
-                        contentDescription = "Close",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                ExpressiveIconButton(
+                    onClick = onDismiss,
+                    icon = Icons.Rounded.Close,
+                    contentDescription = "Close",
+                    size = 36.dp
+                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -309,34 +307,29 @@ fun ProcessTextBottomSheet(
                             )
 
                             // Action icon buttons (TTS pronunciation, copy)
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                IconButton(
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                ExpressiveIconButton(
                                     onClick = { ttsController.toggle(res.directTranslation, targetLanguage) },
-                                    modifier = Modifier.size(36.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = if (ttsController.isSpeaking) Icons.Rounded.Stop else Icons.AutoMirrored.Rounded.VolumeUp,
-                                        contentDescription = stringResource(
-                                            if (ttsController.isSpeaking) R.string.cd_stop_listen_translation else R.string.cd_listen_translation
-                                        ),
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
+                                    icon = if (ttsController.isSpeaking) Icons.Rounded.Stop else Icons.AutoMirrored.Rounded.VolumeUp,
+                                    contentDescription = stringResource(
+                                        if (ttsController.isSpeaking) R.string.cd_stop_listen_translation else R.string.cd_listen_translation
+                                    ),
+                                    contentColor = MaterialTheme.colorScheme.primary,
+                                    size = 36.dp
+                                )
 
-                                IconButton(
+                                ExpressiveIconButton(
                                     onClick = {
                                         copyToClipboard(context, res.directTranslation)
                                     },
-                                    modifier = Modifier.size(36.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.ContentCopy,
-                                        contentDescription = stringResource(R.string.cd_copy_translation),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
+                                    icon = Icons.Rounded.ContentCopy,
+                                    contentDescription = stringResource(R.string.cd_copy_translation),
+                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    size = 36.dp
+                                )
                             }
                         }
 
@@ -475,6 +468,7 @@ fun ProcessTextBottomSheet(
             visible = selectedKeyTerm != null,
             term = selectedKeyTerm,
             targetLanguage = targetLanguage,
+            sourceLanguage = "auto",
             onDismiss = { selectedKeyTerm = null },
             sheetState = keyTermSheetState
         )

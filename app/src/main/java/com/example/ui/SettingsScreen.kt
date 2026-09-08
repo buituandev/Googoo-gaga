@@ -17,6 +17,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowForwardIos
+import androidx.compose.material.icons.automirrored.rounded.HelpOutline
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.DeleteOutline
@@ -28,6 +30,7 @@ import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -68,6 +71,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.R
+import com.example.ui.onboarding.OnboardingActivity
 import com.example.ui.theme.PillShape
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -164,6 +168,8 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            val modelsList = state.availableModels.ifEmpty { PRESET_MODELS }
+
             // Outlined dropdown labeled "Gemini Model" with leading neurology icon and supporting text
             ExposedDropdownMenuBox(
                 expanded = isModelDropdownExpanded,
@@ -195,7 +201,14 @@ fun SettingsScreen(
                         )
                     },
                     trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = isModelDropdownExpanded)
+                        if (state.isLoadingModels) {
+                            CircularWavyProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        } else {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = isModelDropdownExpanded)
+                        }
                     }
                 )
 
@@ -204,8 +217,8 @@ fun SettingsScreen(
                     onDismissRequest = { isModelDropdownExpanded = false },
                     containerColor = MaterialTheme.colorScheme.surfaceContainer
                 ) {
-                    // Preset models
-                    PRESET_MODELS.forEach { modelName ->
+                    // Available models (fetched dynamically from API or preset fallback)
+                    modelsList.forEach { modelName ->
                         DropdownMenuItem(
                             text = {
                                 Text(
@@ -223,8 +236,8 @@ fun SettingsScreen(
                         )
                     }
 
-                    // If currently selected model is a custom one not in presets
-                    if (state.model !in PRESET_MODELS && state.model.isNotBlank()) {
+                    // If currently selected model is a custom one not in available models list
+                    if (state.model !in modelsList && state.model.isNotBlank()) {
                         DropdownMenuItem(
                             text = {
                                 Text(
@@ -262,7 +275,7 @@ fun SettingsScreen(
                         },
                         onClick = {
                             customModelInput =
-                                if (state.model !in PRESET_MODELS) state.model else ""
+                                if (state.model !in modelsList) state.model else ""
                             isModelDropdownExpanded = false
                             showCustomModelDialog = true
                         },
@@ -348,7 +361,7 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            val preferenceItemsCount = if (state.history.isNotEmpty()) 2 else 1
+            val preferenceItemsCount = if (state.history.isNotEmpty()) 3 else 2
 
             Column(
                 modifier = Modifier
@@ -362,10 +375,9 @@ fun SettingsScreen(
                         index = 0,
                         count = preferenceItemsCount
                     ),
+                    onClick = { onEnableInsightChanged(!state.enableInsight) },
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ListItemDefaults.colors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                    ),
+                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                     leadingContent = {
                         Box(
                             modifier = Modifier
@@ -408,17 +420,72 @@ fun SettingsScreen(
                     }
                 )
 
-                // Item 1: History Management Item
+                // Item 1: Revisit Onboarding & Setup Guide Item
+                SegmentedListItem(
+                    shapes = ListItemDefaults.segmentedShapes(
+                        index = 1,
+                        count = preferenceItemsCount
+                    ),
+                    onClick = {
+                        context.startActivity(OnboardingActivity.createIntent(context, fromSettings = true))
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("onboarding_guide_item"),
+                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                    leadingContent = {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(
+                                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
+                                    shape = CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.HelpOutline,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                    },
+                    content = {
+                        Text(
+                            text = stringResource(R.string.label_onboarding_guide),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    },
+                    supportingContent = {
+                        Text(
+                            text = stringResource(R.string.desc_onboarding_guide),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    trailingContent = {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowForwardIos,
+                            contentDescription = stringResource(R.string.btn_view_guide),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                )
+
+                // Item 2: History Management Item
                 if (state.history.isNotEmpty()) {
                     SegmentedListItem(
                         shapes = ListItemDefaults.segmentedShapes(
-                            index = 1,
+                            index = 2,
                             count = preferenceItemsCount
                         ),
+                        onClick = {},
                         modifier = Modifier.fillMaxWidth(),
-                        colors = ListItemDefaults.colors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                        ),
+                        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                         leadingContent = {
                             Box(
                                 modifier = Modifier

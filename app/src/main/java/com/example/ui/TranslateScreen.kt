@@ -28,10 +28,12 @@ import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.ContentPaste
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Psychology
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.Translate
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroup
@@ -58,6 +60,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -71,7 +74,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.R
 import com.example.data.KeyTermInsight
+import com.example.data.LanguageDetector
 import com.example.data.TranslationEntity
+import com.example.ui.components.ExpressiveIconButton
 import com.example.ui.components.InsightBottomSheet
 import com.example.ui.components.InteractiveTranslationText
 import com.example.ui.components.KeyTermBottomSheet
@@ -81,6 +86,7 @@ import com.example.ui.components.rememberTtsController
 import com.example.ui.components.shareText
 import com.example.ui.theme.CardShape
 import com.example.ui.theme.PillShape
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -94,8 +100,11 @@ fun TranslateScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     var showNuanceBottomSheet by remember { mutableStateOf(false) }
     var selectedKeyTerm by remember { mutableStateOf<KeyTermInsight?>(null) }
+    var showSameLanguageDialog by remember { mutableStateOf(false) }
+    var isCheckingLanguage by remember { mutableStateOf(false) }
     val nuanceSheetState = rememberBottomSheetState(
         initialValue = SheetValue.Hidden,
         enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)
@@ -107,11 +116,29 @@ fun TranslateScreen(
 
     val ttsController = rememberTtsController()
 
-    val handlePaste = {
+    val handlePaste: () -> Unit = {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
         val clipText = clipboard?.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString() ?: ""
         if (clipText.isNotBlank()) {
             onInputChanged(clipText)
+        }
+    }
+
+    val handleTranslateAttempt: () -> Unit = {
+        val input = state.inputText.trim()
+        if (input.isNotBlank() && !state.isTranslating && !isCheckingLanguage) {
+            isCheckingLanguage = true
+            coroutineScope.launch {
+                val detectedLang = LanguageDetector.identifyLanguage(input)
+                isCheckingLanguage = false
+                if (LanguageDetector.isSameLanguage(detectedLang, state.targetLanguage)) {
+                    showSameLanguageDialog = true
+                } else {
+                    onTranslateClicked()
+                }
+            }
+        } else if (!state.isTranslating && !isCheckingLanguage) {
+            onTranslateClicked()
         }
     }
 
@@ -217,8 +244,8 @@ fun TranslateScreen(
             customItem(
                 buttonGroupContent = {
                     Button(
-                        onClick = onTranslateClicked,
-                        enabled = !state.isTranslating && state.inputText.isNotBlank(),
+                        onClick = handleTranslateAttempt,
+                        enabled = !state.isTranslating && !isCheckingLanguage && state.inputText.isNotBlank(),
                         modifier = Modifier
                             .weight(2f)
                             .height(56.dp)
@@ -230,7 +257,7 @@ fun TranslateScreen(
                         ),
                         elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
                     ) {
-                        if (state.isTranslating) {
+                        if (state.isTranslating || isCheckingLanguage) {
                             CircularWavyProgressIndicator(
                                 modifier = Modifier.size(24.dp),
                                 color = MaterialTheme.colorScheme.onPrimary,
@@ -258,7 +285,7 @@ fun TranslateScreen(
                 menuContent = {
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.btn_translate_context)) },
-                        onClick = onTranslateClicked
+                        onClick = handleTranslateAttempt
                     )
                 }
             )
@@ -310,63 +337,48 @@ fun TranslateScreen(
                         )
 
                         // Action buttons
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            ExpressiveIconButton(
                                 onClick = {
                                     ttsController.toggle(
                                         current.directTranslation, state.targetLanguage
                                     )
                                 },
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .testTag("listen_button")
-                            ) {
-                                Icon(
-                                    imageVector = if (ttsController.isSpeaking) Icons.Rounded.Stop else Icons.AutoMirrored.Rounded.VolumeUp,
-                                    contentDescription = stringResource(
-                                        if (ttsController.isSpeaking) R.string.cd_stop_listen_translation else R.string.cd_listen_translation
-                                    ),
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
+                                icon = if (ttsController.isSpeaking) Icons.Rounded.Stop else Icons.AutoMirrored.Rounded.VolumeUp,
+                                contentDescription = stringResource(
+                                    if (ttsController.isSpeaking) R.string.cd_stop_listen_translation else R.string.cd_listen_translation
+                                ),
+                                contentColor = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.testTag("listen_button")
+                            )
 
-                            IconButton(
+                            ExpressiveIconButton(
                                 onClick = {
                                     copyToClipboard(context, current.directTranslation)
                                 },
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .testTag("copy_button")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.ContentCopy,
-                                    contentDescription = stringResource(R.string.cd_copy_translation),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
+                                icon = Icons.Rounded.ContentCopy,
+                                contentDescription = stringResource(R.string.cd_copy_translation),
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.testTag("copy_button")
+                            )
 
                             val shareContent = stringResource(
                                 R.string.share_insights_format,
                                 current.directTranslation,
                                 current.culturalContext
                             )
-                            IconButton(
+                            ExpressiveIconButton(
                                 onClick = {
                                     shareText(context, shareContent)
                                 },
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .testTag("share_button")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Share,
-                                    contentDescription = stringResource(R.string.cd_share_translation),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
+                                icon = Icons.Rounded.Share,
+                                contentDescription = stringResource(R.string.cd_share_translation),
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.testTag("share_button")
+                            )
                         }
                     }
 
@@ -457,6 +469,7 @@ fun TranslateScreen(
             visible = selectedKeyTerm != null,
             term = selectedKeyTerm,
             targetLanguage = state.targetLanguage,
+            sourceLanguage = "auto",
             onDismiss = { selectedKeyTerm = null },
             sheetState = keyTermSheetState
         )
@@ -469,6 +482,53 @@ fun TranslateScreen(
             directTranslation = current?.directTranslation ?: "",
             sheetState = nuanceSheetState
         )
+
+        // Same Language Confirmation Alert Dialog
+        if (showSameLanguageDialog) {
+            AlertDialog(
+                onDismissRequest = { showSameLanguageDialog = false },
+                icon = {
+                    Icon(
+                        imageVector = Icons.Rounded.Info,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp)
+                    )
+                },
+                title = {
+                    Text(
+                        text = stringResource(R.string.dialog_same_language_title),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Text(
+                        text = stringResource(R.string.dialog_same_language_msg, state.targetLanguage),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showSameLanguageDialog = false
+                            onTranslateClicked()
+                        },
+                        shape = PillShape
+                    ) {
+                        Text(stringResource(R.string.btn_translate_anyway))
+                    }
+                },
+                dismissButton = {
+                    OutlinedButton(
+                        onClick = { showSameLanguageDialog = false },
+                        shape = PillShape
+                    ) {
+                        Text(stringResource(R.string.btn_cancel))
+                    }
+                }
+            )
+        }
 
         // Recent translations quick suggestion chips if available
         if (state.history.isNotEmpty()) {

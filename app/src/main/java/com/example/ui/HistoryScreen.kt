@@ -1,14 +1,12 @@
 package com.example.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -99,8 +97,10 @@ fun HistoryScreen(
     }
 
     val appBarWithSearchColors = SearchBarDefaults.appBarWithSearchColors(
+        scrolledAppBarContainerColor = MaterialTheme.colorScheme.background,
         searchBarColors = SearchBarDefaults.containedColors(state = searchBarState)
     )
+
 
     val inputField: @Composable () -> Unit = {
         SearchBarDefaults.InputField(
@@ -149,44 +149,49 @@ fun HistoryScreen(
 
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            AppBarWithSearch(
-                scrollBehavior = scrollBehavior,
-                state = searchBarState,
-                colors = appBarWithSearchColors,
-                inputField = inputField,
-                actions = {
-                    if (state.history.isNotEmpty()) {
-                        IconButton(
-                            onClick = { showClearConfirmDialog = true },
-                            modifier = Modifier.testTag("clear_all_history_btn")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.DeleteSweep,
-                                contentDescription = stringResource(R.string.cd_clear_history),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+            Surface(
+                color = MaterialTheme.colorScheme.surface
+            ) {
+                Column {
+                    AppBarWithSearch(
+                        scrollBehavior = scrollBehavior,
+                        state = searchBarState,
+                        colors = appBarWithSearchColors,
+                        inputField = inputField,
+                        actions = {
+                            if (state.history.isNotEmpty()) {
+                                IconButton(
+                                    onClick = { showClearConfirmDialog = true },
+                                    modifier = Modifier.testTag("clear_all_history_btn")
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.DeleteSweep,
+                                        contentDescription = stringResource(R.string.cd_clear_history),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
                         }
+                    )
+
+                    ExpandedFullScreenContainedSearchBar(
+                        state = searchBarState,
+                        inputField = inputField,
+                        colors = appBarWithSearchColors.searchBarColors,
+                    ) {
+                        HistoryListContent(
+                            items = filteredHistory,
+                            onItemClick = { item ->
+                                scope.launch { searchBarState.animateToCollapsed() }
+                                onHistoryItemSelected(item)
+                            },
+                            onDeleteItem = onDeleteItem,
+                            isSearching = query.isNotBlank(),
+                            searchQuery = query
+                        )
                     }
                 }
-            )
-
-            ExpandedFullScreenContainedSearchBar(
-                state = searchBarState,
-                inputField = inputField,
-                colors = appBarWithSearchColors.searchBarColors,
-            ) {
-                HistoryListContent(
-                    items = filteredHistory,
-                    onItemClick = { item ->
-                        scope.launch { searchBarState.animateToCollapsed() }
-                        onHistoryItemSelected(item)
-                    },
-                    onDeleteItem = onDeleteItem,
-                    isSearching = query.isNotBlank(),
-                    searchQuery = query
-                )
             }
         }
     ) { innerPadding ->
@@ -273,14 +278,18 @@ private fun HistoryListContent(
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = if (isSearching) stringResource(R.string.no_search_results_title) else stringResource(R.string.empty_history_title),
+                    text = if (isSearching) stringResource(R.string.no_search_results_title) else stringResource(
+                        R.string.empty_history_title
+                    ),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = if (isSearching) stringResource(R.string.no_search_results_desc) else stringResource(R.string.empty_history_desc),
+                    text = if (isSearching) stringResource(R.string.no_search_results_desc) else stringResource(
+                        R.string.empty_history_desc
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -295,8 +304,8 @@ private fun HistoryListContent(
 
         LazyColumn(
             contentPadding = PaddingValues(
-                start = 16.dp,
-                end = 16.dp,
+                start = 12.dp,
+                end = 12.dp,
                 top = contentPadding.calculateTopPadding() + 8.dp,
                 bottom = contentPadding.calculateBottomPadding() + 24.dp
             ),
@@ -309,7 +318,10 @@ private fun HistoryListContent(
             ) { index, item ->
                 val hasKeyTerms = item.keyTerms.isNotEmpty()
                 val dateStr = remember(item.timestamp) {
-                    SimpleDateFormat("MMM d, HH:mm", Locale.getDefault()).format(Date(item.timestamp))
+                    SimpleDateFormat(
+                        "MMM d, HH:mm",
+                        Locale.getDefault()
+                    ).format(Date(item.timestamp))
                 }
 
                 val sourceAnnotated = remember(item.sourceText, searchQuery) {
@@ -333,13 +345,11 @@ private fun HistoryListContent(
                         index = index,
                         count = items.size
                     ),
+                    onClick = { onItemClick(item) },
+                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onItemClick(item) }
                         .testTag("history_item_${item.id}"),
-                    colors = ListItemDefaults.colors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                    ),
                     overlineContent = {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -367,7 +377,10 @@ private fun HistoryListContent(
                                     color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
                                 ) {
                                     Row(
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                        modifier = Modifier.padding(
+                                            horizontal = 6.dp,
+                                            vertical = 2.dp
+                                        ),
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(2.dp)
                                     ) {
@@ -378,7 +391,10 @@ private fun HistoryListContent(
                                             modifier = Modifier.size(10.dp)
                                         )
                                         Text(
-                                            text = stringResource(R.string.key_terms_count, item.keyTerms.size),
+                                            text = stringResource(
+                                                R.string.key_terms_count,
+                                                item.keyTerms.size
+                                            ),
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.primary,
                                             fontWeight = FontWeight.Medium
@@ -394,7 +410,7 @@ private fun HistoryListContent(
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 2,
+                            maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                     },
@@ -403,7 +419,7 @@ private fun HistoryListContent(
                             text = translationAnnotated,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2,
+                            maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                     },

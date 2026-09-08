@@ -18,12 +18,15 @@ data class UiState(
     val currentTranslation: TranslationEntity? = null,
     val apiKey: String = "",
     val model: String = "gemini-3.1-flash-lite",
+    val availableModels: List<String> = PRESET_MODELS,
+    val isLoadingModels: Boolean = false,
     val customInstruction: String = "",
     val enableInsight: Boolean = true,
-    val currentTab: Int = 0, // 0 = Translate, 1 = History, 2 = Settings
+    val currentTab: Int = 0, // 0 = Translate, 1 = Subtitles, 2 = History, 3 = Settings
     val errorMessage: String? = null,
     val successMessage: String? = null,
-    val history: List<TranslationEntity> = emptyList()
+    val history: List<TranslationEntity> = emptyList(),
+    val isOnboardingCompleted: Boolean = false
 )
 
 val PRESET_LANGUAGES = listOf("English", "Vietnamese")
@@ -46,20 +49,50 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val savedLang = repository.preferences.getTargetLanguage()
         val savedInstruction = repository.preferences.getCustomInstruction()
         val savedInsightEnabled = repository.preferences.isInsightEnabled()
+        val savedOnboarding = repository.preferences.isOnboardingCompleted()
 
         _uiState.value = _uiState.value.copy(
             apiKey = savedKey,
             model = savedModel.ifBlank { "gemini-3.1-flash-lite" },
             targetLanguage = savedLang.ifBlank { "Vietnamese" },
             customInstruction = savedInstruction,
-            enableInsight = savedInsightEnabled
+            enableInsight = savedInsightEnabled,
+            isOnboardingCompleted = savedOnboarding
         )
+
+        if (savedKey.isNotBlank()) {
+            fetchAvailableModels(savedKey)
+        }
     }
 
     private fun observeHistory() {
         viewModelScope.launch {
             repository.translationHistory.collectLatest { list ->
                 _uiState.value = _uiState.value.copy(history = list)
+            }
+        }
+    }
+
+    fun fetchAvailableModels(apiKey: String = _uiState.value.apiKey) {
+        val key = apiKey.trim()
+        if (key.isBlank()) {
+            _uiState.value = _uiState.value.copy(availableModels = PRESET_MODELS, isLoadingModels = false)
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoadingModels = true)
+            val result = repository.fetchAvailableModels(key)
+            result.onSuccess { models ->
+                _uiState.value = _uiState.value.copy(
+                    availableModels = models.ifEmpty { PRESET_MODELS },
+                    isLoadingModels = false
+                )
+            }.onFailure {
+                _uiState.value = _uiState.value.copy(
+                    availableModels = PRESET_MODELS,
+                    isLoadingModels = false
+                )
             }
         }
     }
@@ -76,6 +109,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun onApiKeyChanged(key: String) {
         _uiState.value = _uiState.value.copy(apiKey = key)
         repository.preferences.setApiKey(key)
+        if (key.isNotBlank()) {
+            fetchAvailableModels(key)
+        } else {
+            _uiState.value = _uiState.value.copy(availableModels = PRESET_MODELS, isLoadingModels = false)
+        }
     }
 
     fun onModelChanged(model: String) {
@@ -154,5 +192,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.clearHistory()
         }
+    }
+
+    fun completeOnboarding(apiKey: String) {
+        val trimmedKey = apiKey.trim()
+        if (trimmedKey.isNotBlank()) {
+            repository.preferences.setApiKey(trimmedKey)
+            _uiState.value = _uiState.value.copy(apiKey = trimmedKey)
+            fetchAvailableModels(trimmedKey)
+        }
+        repository.preferences.setOnboardingCompleted(true)
+        _uiState.value = _uiState.value.copy(isOnboardingCompleted = true)
     }
 }

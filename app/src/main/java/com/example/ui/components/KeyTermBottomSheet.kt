@@ -62,10 +62,11 @@ import com.example.ui.theme.PillShape
 @Composable
 fun KeyTermBottomSheet(
     visible: Boolean,
+    modifier: Modifier = Modifier,
     term: KeyTermInsight?,
     targetLanguage: String,
+    sourceLanguage: String = "auto",
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier,
     sheetState: SheetState = rememberBottomSheetState(
         initialValue = SheetValue.Hidden,
         enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)
@@ -225,10 +226,9 @@ fun KeyTermBottomSheet(
                             index = 0,
                             count = detailsCount
                         ),
+                        onClick = { ttsController.toggle(term.originalTerm, sourceLanguage) },
                         modifier = Modifier.fillMaxWidth(),
-                        colors = ListItemDefaults.colors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                        ),
+                        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                         overlineContent = {
                             Text(
                                 text = stringResource(R.string.label_original_phrase),
@@ -247,7 +247,7 @@ fun KeyTermBottomSheet(
                         },
                         trailingContent = {
                             IconButton(
-                                onClick = { ttsController.toggle(term.originalTerm, "English") },
+                                onClick = { ttsController.toggle(term.originalTerm, sourceLanguage) },
                                 modifier = Modifier.size(36.dp)
                             ) {
                                 Icon(
@@ -267,10 +267,9 @@ fun KeyTermBottomSheet(
                         index = if (hasOriginal) 1 else 0,
                         count = detailsCount
                     ),
+                    onClick = {},
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ListItemDefaults.colors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                    ),
+                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                     leadingContent = {
                         Box(
                             modifier = Modifier
