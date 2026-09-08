@@ -1,0 +1,5 @@
+- Thay thế ML Kit bằng thư viện mã nguồn mở Lingua để nhận diện ngôn ngữ offline.
+- Bổ sung danh sách hơn 130+ ngôn ngữ với tìm kiếm nhanh.
+- Loại bỏ hoàn toàn Firebase & GMS để tuân thủ 100% chính sách FOSS của F-Droid.
+- Bổ sung tính năng dịch phụ đề SRT/VTT và trình phát đồng bộ trực quan.
+- Tối ưu hóa giao diện và định dạng văn bản bản dịch.
