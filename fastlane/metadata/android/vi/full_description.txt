@@ -5,5 +5,4 @@ Tính năng nổi bật:
 - Giải nghĩa ngữ cảnh sâu sắc: Phân tích thành ngữ, từ lóng, thuật ngữ và sắc thái văn hóa.
 - Dịch phụ đề SRT/VTT: Tải và dịch file phụ đề với trình phát đồng bộ trực quan.
 - Dịch nhanh từ menu chọn văn bản hệ thống (Process Text).
-- Nhận diện ngôn ngữ offline hoàn toàn trên thiết bị với thư viện Lingua.
 - Bảo mật quyền riêng tư: API Key được lưu an toàn trên thiết bị của bạn.

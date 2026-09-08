@@ -1,5 +1,3 @@
-- Replaced proprietary ML Kit with 100% FOSS Lingua language detector.
 - Added comprehensive 130+ world language selector with instant search.
-- Removed Firebase & GMS dependencies for pure FOSS F-Droid compliance.
 - Added Subtitle SRT/VTT translation and synchronized preview player.
 - Enhanced translation layout formatting.

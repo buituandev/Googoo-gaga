@@ -5,5 +5,4 @@ Features:
 - Deep Linguistic & Cultural Insights: Key terms, slang, idioms, and cultural context breakdown.
 - Subtitle & Long Text Translator: Translate SRT/VTT subtitle files with interactive synchronized player.
 - Instant System Text Selection: Translate highlighted text directly across any app via Android Process Text.
-- On-Device Offline Language Detection: Powered by Lingua (FOSS).
 - 100% Privacy Focused: Your API key is stored strictly on your local device.
