@@ -56,31 +56,50 @@ fun detectLocaleFromText(text: String): Locale {
  */
 fun resolveLocaleForLanguage(language: String, textToSpeak: String = ""): Locale {
     val clean = language.trim().lowercase(Locale.ROOT)
+    val base = clean.substringBefore("(").trim()
     return when {
         clean == "auto" || clean.isBlank() -> {
             if (textToSpeak.isNotBlank()) detectLocaleFromText(textToSpeak) else Locale.getDefault()
         }
-        clean == "vietnamese" || clean == "vi" || clean.startsWith("vi-") -> Locale.forLanguageTag("vi-VN")
-        clean == "english" || clean == "en" || clean.startsWith("en-") -> Locale.ENGLISH
-        clean == "spanish" || clean == "es" || clean.startsWith("es-") -> Locale.forLanguageTag("es-ES")
-        clean == "french" || clean == "fr" || clean.startsWith("fr-") -> Locale.FRENCH
-        clean == "german" || clean == "de" || clean.startsWith("de-") -> Locale.GERMAN
-        clean == "japanese" || clean == "ja" || clean.startsWith("ja-") -> Locale.JAPANESE
-        clean in listOf("chinese", "mandarin", "zh", "zh-cn", "simplified chinese") -> Locale.SIMPLIFIED_CHINESE
-        clean in listOf("traditional chinese", "zh-tw", "zh-hk", "cantonese") -> Locale.TRADITIONAL_CHINESE
-        clean == "korean" || clean == "ko" || clean.startsWith("ko-") -> Locale.KOREAN
-        clean == "italian" || clean == "it" || clean.startsWith("it-") -> Locale.ITALIAN
-        clean == "portuguese" || clean == "pt" || clean.startsWith("pt-") -> Locale.forLanguageTag("pt-PT")
-        clean == "russian" || clean == "ru" || clean.startsWith("ru-") -> Locale.forLanguageTag("ru-RU")
-        clean == "hindi" || clean == "hi" || clean.startsWith("hi-") -> Locale.forLanguageTag("hi-IN")
-        clean == "arabic" || clean == "ar" || clean.startsWith("ar-") -> Locale.forLanguageTag("ar")
-        clean == "thai" || clean == "th" || clean.startsWith("th-") -> Locale.forLanguageTag("th-TH")
-        clean == "indonesian" || clean == "id" || clean.startsWith("id-") -> Locale.forLanguageTag("id-ID")
+        clean in listOf("vietnamese", "vi", "tiếng việt") || clean.startsWith("vi-") || base == "vietnamese" -> Locale.forLanguageTag("vi-VN")
+        clean in listOf("english", "en", "tiếng anh") || clean.startsWith("en-") || base == "english" -> Locale.ENGLISH
+        clean in listOf("spanish", "es") || clean.startsWith("es-") || base == "spanish" -> Locale.forLanguageTag("es-ES")
+        clean in listOf("french", "fr") || clean.startsWith("fr-") || base == "french" -> Locale.FRENCH
+        clean in listOf("german", "de") || clean.startsWith("de-") || base == "german" -> Locale.GERMAN
+        clean in listOf("japanese", "ja") || clean.startsWith("ja-") || base == "japanese" -> Locale.JAPANESE
+        clean in listOf("chinese (simplified)", "simplified chinese") -> Locale.SIMPLIFIED_CHINESE
+        clean in listOf("chinese (traditional)", "traditional chinese", "zh-tw", "zh-hk", "cantonese") -> Locale.TRADITIONAL_CHINESE
+        clean in listOf("chinese", "mandarin", "zh", "zh-cn") || base == "chinese" -> Locale.SIMPLIFIED_CHINESE
+        clean in listOf("korean", "ko") || clean.startsWith("ko-") || base == "korean" -> Locale.KOREAN
+        clean in listOf("italian", "it") || clean.startsWith("it-") || base == "italian" -> Locale.ITALIAN
+        clean in listOf("portuguese (brazil)", "pt-br") -> Locale.forLanguageTag("pt-BR")
+        clean in listOf("portuguese (portugal)", "portuguese", "pt", "pt-pt") || base == "portuguese" -> Locale.forLanguageTag("pt-PT")
+        clean in listOf("russian", "ru") || clean.startsWith("ru-") || base == "russian" -> Locale.forLanguageTag("ru-RU")
+        clean in listOf("hindi", "hi") || clean.startsWith("hi-") || base == "hindi" -> Locale.forLanguageTag("hi-IN")
+        clean in listOf("arabic", "ar") || clean.startsWith("ar-") || base == "arabic" -> Locale.forLanguageTag("ar")
+        clean in listOf("thai", "th") || clean.startsWith("th-") || base == "thai" -> Locale.forLanguageTag("th-TH")
+        clean in listOf("indonesian", "id") || clean.startsWith("id-") || base == "indonesian" -> Locale.forLanguageTag("id-ID")
+        clean in listOf("polish", "pl") || base == "polish" -> Locale.forLanguageTag("pl-PL")
+        clean in listOf("turkish", "tr") || base == "turkish" -> Locale.forLanguageTag("tr-TR")
+        clean in listOf("dutch", "nl") || base == "dutch" -> Locale.forLanguageTag("nl-NL")
+        clean in listOf("swedish", "sv") || base == "swedish" -> Locale.forLanguageTag("sv-SE")
+        clean in listOf("greek", "el") || base == "greek" -> Locale.forLanguageTag("el-GR")
+        clean in listOf("czech", "cs") || base == "czech" -> Locale.forLanguageTag("cs-CZ")
+        clean in listOf("ukrainian", "uk") || base == "ukrainian" -> Locale.forLanguageTag("uk-UA")
+        clean in listOf("danish", "da") || base == "danish" -> Locale.forLanguageTag("da-DK")
+        clean in listOf("finnish", "fi") || base == "finnish" -> Locale.forLanguageTag("fi-FI")
+        clean in listOf("norwegian", "no") || base == "norwegian" -> Locale.forLanguageTag("no-NO")
+        clean in listOf("romanian", "ro") || base == "romanian" -> Locale.forLanguageTag("ro-RO")
+        clean in listOf("hungarian", "hu") || base == "hungarian" -> Locale.forLanguageTag("hu-HU")
         else -> {
             try {
-                val candidate = Locale.forLanguageTag(language)
-                if (candidate.language.isNotBlank()) candidate else {
-                    if (textToSpeak.isNotBlank()) detectLocaleFromText(textToSpeak) else Locale.getDefault()
+                val normalizedCode = com.techfox.data.LanguageDetector.normalizeLanguageCode(language)
+                if (normalizedCode.isNotBlank() && normalizedCode.length in 2..3) {
+                    Locale.forLanguageTag(normalizedCode)
+                } else if (textToSpeak.isNotBlank()) {
+                    detectLocaleFromText(textToSpeak)
+                } else {
+                    Locale.getDefault()
                 }
             } catch (_: Exception) {
                 if (textToSpeak.isNotBlank()) detectLocaleFromText(textToSpeak) else Locale.getDefault()

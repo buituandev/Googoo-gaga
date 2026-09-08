@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.techfox.data.TranslationEntity
 import com.techfox.data.TranslationRepository
+import com.techfox.ui.components.FULL_LANGUAGE_LIST
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,7 +30,7 @@ data class UiState(
     val isOnboardingCompleted: Boolean = false
 )
 
-val PRESET_LANGUAGES = listOf("English", "Vietnamese")
+val PRESET_LANGUAGES: List<String> = FULL_LANGUAGE_LIST
 val PRESET_MODELS = listOf("gemini-3.1-flash-lite", "gemma-4-26b-a4b-it", "gemini-3.8-flash")
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -194,14 +195,4 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun completeOnboarding(apiKey: String) {
-        val trimmedKey = apiKey.trim()
-        if (trimmedKey.isNotBlank()) {
-            repository.preferences.setApiKey(trimmedKey)
-            _uiState.value = _uiState.value.copy(apiKey = trimmedKey)
-            fetchAvailableModels(trimmedKey)
-        }
-        repository.preferences.setOnboardingCompleted(true)
-        _uiState.value = _uiState.value.copy(isOnboardingCompleted = true)
-    }
 }

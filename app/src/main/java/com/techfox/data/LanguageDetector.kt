@@ -19,6 +19,26 @@ object LanguageDetector {
             .build()
     }
 
+    private val COMMON_ENGLISH_WORDS = setOf(
+        "hello", "hi", "hey", "howdy", "greetings", "thanks", "thank", "bye", "goodbye",
+        "good", "morning", "afternoon", "evening", "night", "yes", "no", "yeah", "yep",
+        "nope", "okay", "ok", "please", "welcome", "sorry", "excuse", "world", "how",
+        "what", "where", "when", "why", "who", "which", "is", "are", "am", "was", "were",
+        "be", "been", "being", "the", "this", "that", "these", "those", "have", "has",
+        "had", "do", "does", "did", "can", "could", "will", "would", "should", "love",
+        "like", "friend", "people", "today", "tomorrow", "yesterday", "see", "you",
+        "later", "again", "nice", "meet", "fine", "well", "great", "awesome", "cool",
+        "test", "testing", "help", "translate", "translation", "language", "text",
+        "name", "time", "day", "way", "man", "thing", "woman", "life", "child"
+    )
+
+    private val COMMON_VIETNAMESE_WORDS = setOf(
+        "xin", "chao", "chào", "cam", "on", "cảm", "ơn", "tam", "biet", "tạm", "biệt",
+        "vang", "vâng", "da", "dạ", "khong", "không", "duoc", "được", "tot", "tốt",
+        "dep", "đẹp", "hom", "nay", "hôm", "ngay", "mai", "ngày", "o", "dau", "ở", "đâu",
+        "ai", "gi", "gì", "sao", "nao", "nào", "the", "thế", "nhe", "nhé", "nha", "co", "có"
+    )
+
     /**
      * Identifies the language of the given text using Lingua on-device model,
      * falling back to script/character heuristic analysis when Lingua returns UNKNOWN or encounters an error.
@@ -31,12 +51,24 @@ object LanguageDetector {
     }
 
     /**
-     * Synchronous identification using Lingua with script/character fallback.
+     * Synchronous identification using common vocabulary fast-path, Lingua, and script/character fallback.
      */
     fun identify(text: String): String {
         val trimmed = text.trim()
         if (trimmed.isEmpty()) return "en"
 
+        // 1. Fast-path: check common dictionary words for short inputs (< 6 words)
+        val words = trimmed.lowercase(Locale.ROOT)
+            .replace(Regex("[^\\p{L}\\s]"), " ")
+            .split(Regex("\\s+"))
+            .filter { it.isNotBlank() }
+
+        if (words.isNotEmpty() && words.size <= 5) {
+            if (words.all { it in COMMON_ENGLISH_WORDS }) return "en"
+            if (words.all { it in COMMON_VIETNAMESE_WORDS }) return "vi"
+        }
+
+        // 2. Lingua n-gram statistical detection
         try {
             val detected = linguaDetector.detectLanguageOf(trimmed)
             if (detected != Language.UNKNOWN) {
@@ -49,7 +81,7 @@ object LanguageDetector {
             // Fallback gracefully on any Lingua exception
         }
 
-        // Script / character range heuristic fallback
+        // 3. Script / character range heuristic fallback
         val fallbackLocale = detectLocaleFromText(trimmed)
         return fallbackLocale.language.ifBlank { "en" }
     }
@@ -69,23 +101,39 @@ object LanguageDetector {
         val clean = lang.trim().lowercase(Locale.ROOT)
         if (clean.isBlank()) return ""
 
+        val base = clean.substringBefore("(").trim()
+
         // 1. Fast-path common alias lookup
-        when (clean) {
-            in listOf("en", "eng", "english", "tiếng anh", "tieng anh") -> return "en"
-            in listOf("vi", "vie", "vietnamese", "tiếng việt", "tieng viet") -> return "vi"
-            in listOf("fr", "fra", "fre", "french", "tiếng pháp", "tieng phap", "français", "francais") -> return "fr"
-            in listOf("es", "spa", "spanish", "tiếng tây ban nha", "tieng tay ban nha", "español", "espanol") -> return "es"
-            in listOf("de", "deu", "ger", "german", "tiếng đức", "tieng duc", "deutsch") -> return "de"
-            in listOf("ja", "jpn", "japanese", "tiếng nhật", "tieng nhat", "nihongo", "日本語") -> return "ja"
-            in listOf("zh", "zho", "chi", "chinese", "mandarin", "simplified chinese", "traditional chinese", "tiếng trung", "tieng trung", "中文") -> return "zh"
-            in listOf("ko", "kor", "korean", "tiếng hàn", "tieng han", "한국어") -> return "ko"
-            in listOf("it", "ita", "italian", "tiếng ý", "tieng y", "italiano") -> return "it"
-            in listOf("pt", "por", "portuguese", "tiếng bồ đào nha", "tieng bo dao nha", "português", "portugues") -> return "pt"
-            in listOf("ru", "rus", "russian", "tiếng nga", "tieng nga", "русский") -> return "ru"
-            in listOf("hi", "hin", "hindi", "tiếng ấn độ", "tieng an do", "हिन्दी") -> return "hi"
-            in listOf("ar", "ara", "arabic", "tiếng ả rập", "tieng a rap", "العربية") -> return "ar"
-            in listOf("th", "tha", "thai", "tiếng thái", "tieng thai", "ไทย") -> return "th"
-            in listOf("id", "ind", "indonesian", "tiếng indonesia", "tieng indonesia", "bahasa indonesia") -> return "id"
+        when {
+            clean in listOf("en", "eng", "english", "tiếng anh", "tieng anh") || base == "english" -> return "en"
+            clean in listOf("vi", "vie", "vietnamese", "tiếng việt", "tieng viet") || base == "vietnamese" -> return "vi"
+            clean in listOf("fr", "fra", "fre", "french", "tiếng pháp", "tieng phap", "français", "francais") || base == "french" -> return "fr"
+            clean in listOf("es", "spa", "spanish", "tiếng tây ban nha", "tieng tay ban nha", "español", "espanol") || base == "spanish" -> return "es"
+            clean in listOf("de", "deu", "ger", "german", "tiếng đức", "tieng duc", "deutsch") || base == "german" -> return "de"
+            clean in listOf("ja", "jpn", "japanese", "tiếng nhật", "tieng nhat", "nihongo", "日本語") || base == "japanese" -> return "ja"
+            clean in listOf("zh", "zho", "chi", "chinese", "mandarin", "simplified chinese", "traditional chinese", "tiếng trung", "tieng trung", "中文") || base == "chinese" -> return "zh"
+            clean in listOf("ko", "kor", "korean", "tiếng hàn", "tieng han", "한국어") || base == "korean" -> return "ko"
+            clean in listOf("it", "ita", "italian", "tiếng ý", "tieng y", "italiano") || base == "italian" -> return "it"
+            clean in listOf("pt", "por", "portuguese", "tiếng bồ đào nha", "tieng bo dao nha", "português", "portugues") || base == "portuguese" -> return "pt"
+            clean in listOf("ru", "rus", "russian", "tiếng nga", "tieng nga", "русский") || base == "russian" -> return "ru"
+            clean in listOf("hi", "hin", "hindi", "tiếng ấn độ", "tieng an do", "हिन्दी") || base == "hindi" -> return "hi"
+            clean in listOf("ar", "ara", "arabic", "tiếng ả rập", "tieng a rap", "العربية") || base == "arabic" -> return "ar"
+            clean in listOf("th", "tha", "thai", "tiếng thái", "tieng thai", "ไทย") || base == "thai" -> return "th"
+            clean in listOf("id", "ind", "indonesian", "tiếng indonesia", "tieng indonesia", "bahasa indonesia") || base == "indonesian" -> return "id"
+            clean in listOf("pl", "pol", "polish", "tiếng ba lan", "polski") || base == "polish" -> return "pl"
+            clean in listOf("tr", "tur", "turkish", "tiếng thổ nhĩ kỳ", "türkçe") || base == "turkish" -> return "tr"
+            clean in listOf("nl", "nld", "dutch", "tiếng hà lan", "nederlands") || base == "dutch" -> return "nl"
+            clean in listOf("sv", "swe", "swedish", "tiếng thụy điển", "svenska") || base == "swedish" -> return "sv"
+            clean in listOf("uk", "ukr", "ukrainian", "tiếng ukraina", "українська") || base == "ukrainian" -> return "uk"
+            clean in listOf("cs", "ces", "czech", "tiếng séc", "čeština") || base == "czech" -> return "cs"
+            clean in listOf("el", "ell", "greek", "tiếng hy lạp", "ελληνικά") || base == "greek" -> return "el"
+            clean in listOf("he", "heb", "hebrew", "tiếng do thái", "עברית") || base == "hebrew" -> return "he"
+            clean in listOf("da", "dan", "danish", "tiếng đan mạch", "dansk") || base == "danish" -> return "da"
+            clean in listOf("fi", "fin", "finnish", "tiếng phần lan", "suomi") || base == "finnish" -> return "fi"
+            clean in listOf("no", "nor", "norwegian", "tiếng na uy", "norsk") || base == "norwegian" -> return "no"
+            clean in listOf("ro", "ron", "rum", "romanian", "tiếng romania", "română") || base == "romanian" -> return "ro"
+            clean in listOf("hu", "hun", "hungarian", "tiếng hungary", "magyar") || base == "hungarian" -> return "hu"
+            clean in listOf("fil", "tl", "filipino", "tagalog") || base in listOf("filipino", "tagalog") -> return "fil"
         }
 
         // 2. Direct BCP-47 tag resolution (e.g., "tr", "sv", "pl", "nl", "el", "he", "uk", "fi")
@@ -103,7 +151,8 @@ object LanguageDetector {
                 if (loc.language.equals(clean, ignoreCase = true) ||
                     loc.getDisplayLanguage(Locale.ENGLISH).equals(clean, ignoreCase = true) ||
                     loc.getDisplayLanguage(loc).equals(clean, ignoreCase = true) ||
-                    loc.displayLanguage.equals(clean, ignoreCase = true)
+                    loc.displayLanguage.equals(clean, ignoreCase = true) ||
+                    loc.getDisplayLanguage(Locale.ENGLISH).equals(base, ignoreCase = true)
                 ) {
                     return loc.language
                 }
@@ -127,5 +176,32 @@ object LanguageDetector {
         val tgtCode = normalizeLanguageCode(tgt)
 
         return srcCode.isNotBlank() && srcCode == tgtCode
+    }
+
+    /**
+     * Checks if the text matches the selected target language.
+     * Combines direct identification, target-normalized codes, and multi-candidate confidence evaluation.
+     */
+    fun matchesTargetLanguage(text: String, targetLanguage: String): Boolean {
+        val trimmed = text.trim()
+        if (trimmed.isEmpty()) return false
+
+        val tgtCode = normalizeLanguageCode(targetLanguage)
+        if (tgtCode.isBlank() || tgtCode == "auto") return false
+
+        val identifiedCode = identify(trimmed)
+        if (isSameLanguage(identifiedCode, targetLanguage)) return true
+
+        // Check confidence scores for short or ambiguous texts
+        try {
+            val confidences = linguaDetector.computeLanguageConfidenceValues(trimmed)
+            for ((lang, score) in confidences) {
+                if (score < 0.75) break
+                val langCode = lang.isoCode639_1.name.lowercase(Locale.ROOT)
+                if (langCode == tgtCode) return true
+            }
+        } catch (_: Throwable) {}
+
+        return false
     }
 }

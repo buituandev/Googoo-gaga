@@ -7,6 +7,9 @@
     <string name="title_history">History</string>
     <string name="title_recent_translations">Recent Translations</string>
     <string name="search_history_placeholder">Search translations…</string>
+    <string name="search_language_placeholder">Search language…</string>
+    <string name="section_popular_languages">Popular Languages</string>
+    <string name="section_all_languages">All Languages</string>
     <string name="empty_history_title">No translation history</string>
     <string name="empty_history_desc">Your translated phrases and insights will appear here.</string>
     <string name="no_search_results_title">No results found</string>

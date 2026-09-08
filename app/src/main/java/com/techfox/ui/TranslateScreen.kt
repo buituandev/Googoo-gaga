@@ -128,9 +128,9 @@ fun TranslateScreen(
         if (input.isNotBlank() && !state.isTranslating && !isCheckingLanguage) {
             isCheckingLanguage = true
             coroutineScope.launch {
-                val detectedLang = LanguageDetector.identifyLanguage(input)
+                val isSame = LanguageDetector.matchesTargetLanguage(input, state.targetLanguage)
                 isCheckingLanguage = false
-                if (LanguageDetector.isSameLanguage(detectedLang, state.targetLanguage)) {
+                if (isSame) {
                     showSameLanguageDialog = true
                 } else {
                     onTranslateClicked()

@@ -4,6 +4,8 @@ import com.techfox.data.GeminiTranslatorService
 import com.techfox.data.KeyTermInsight
 import com.techfox.data.LanguageDetector
 import com.techfox.data.TextSanitizer
+import com.techfox.ui.components.FULL_LANGUAGE_LIST
+import com.techfox.ui.components.POPULAR_LANGUAGES
 import com.techfox.ui.components.detectLocaleFromText
 import com.techfox.ui.components.resolveLocaleForLanguage
 import java.util.Locale
@@ -297,6 +299,19 @@ class ExampleUnitTest {
     }
 
     @Test
+    fun testIdentifyHello() {
+        val detected = LanguageDetector.identify("hello")
+        assertEquals("en", detected)
+        assertTrue(LanguageDetector.isSameLanguage(detected, "English"))
+        assertTrue(LanguageDetector.matchesTargetLanguage("hello", "English"))
+        assertTrue(LanguageDetector.matchesTargetLanguage("Hello", "English"))
+        assertTrue(LanguageDetector.matchesTargetLanguage("Hello world", "English"))
+        assertFalse(LanguageDetector.matchesTargetLanguage("hello", "Vietnamese"))
+        assertTrue(LanguageDetector.matchesTargetLanguage("xin chào", "Vietnamese"))
+        assertFalse(LanguageDetector.matchesTargetLanguage("xin chào", "English"))
+    }
+
+    @Test
     fun testIsSameLanguage() {
         // Vietnamese match
         assertTrue(LanguageDetector.isSameLanguage("vi", "Vietnamese"))
@@ -399,6 +414,59 @@ class ExampleUnitTest {
         assertEquals("Sự lựa chọn sau khi suy nghĩ kỹ.", output.keyTerms[1].explanation)
         assertTrue(output.culturalContext.contains("- **Giao tiếp**: Nên cân nhắc kỹ lưỡng hoàn cảnh"))
         assertFalse(output.culturalContext.contains("dùng nhiều trong phân tích"))
+    }
+
+    @Test
+    fun testFullLanguageList_containsComprehensiveWorldLanguages() {
+        assertTrue("Expected 100+ languages in FULL_LANGUAGE_LIST", FULL_LANGUAGE_LIST.size >= 100)
+        assertEquals("English", FULL_LANGUAGE_LIST[0])
+        assertEquals("Vietnamese", FULL_LANGUAGE_LIST[1])
+
+        // Verify key world languages are included
+        val keyLanguages = listOf(
+            "Chinese (Simplified)", "Chinese (Traditional)", "Spanish", "French", "German",
+            "Japanese", "Korean", "Italian", "Portuguese", "Russian", "Arabic", "Hindi",
+            "Polish", "Turkish", "Dutch", "Swedish", "Greek", "Thai", "Indonesian"
+        )
+        for (lang in keyLanguages) {
+            assertTrue("Expected $lang to be in FULL_LANGUAGE_LIST", FULL_LANGUAGE_LIST.contains(lang))
+        }
+
+        // Verify no duplicates
+        assertEquals(FULL_LANGUAGE_LIST.size, FULL_LANGUAGE_LIST.distinct().size)
+
+        // Verify all language entries are valid capitalized strings
+        for (lang in FULL_LANGUAGE_LIST) {
+            assertTrue("Language name should be at least 3 chars: $lang", lang.length >= 3)
+            assertTrue("Language name should be capitalized: $lang", lang.first().isUpperCase())
+        }
+    }
+
+    @Test
+    fun testNormalizeLanguageCode_withVariousLanguagesAndDialects() {
+        assertEquals("en", LanguageDetector.normalizeLanguageCode("English"))
+        assertEquals("vi", LanguageDetector.normalizeLanguageCode("Vietnamese"))
+        assertEquals("zh", LanguageDetector.normalizeLanguageCode("Chinese (Simplified)"))
+        assertEquals("zh", LanguageDetector.normalizeLanguageCode("Chinese (Traditional)"))
+        assertEquals("pt", LanguageDetector.normalizeLanguageCode("Portuguese (Brazil)"))
+        assertEquals("pl", LanguageDetector.normalizeLanguageCode("Polish"))
+        assertEquals("tr", LanguageDetector.normalizeLanguageCode("Turkish"))
+        assertEquals("nl", LanguageDetector.normalizeLanguageCode("Dutch"))
+        assertEquals("sv", LanguageDetector.normalizeLanguageCode("Swedish"))
+        assertEquals("el", LanguageDetector.normalizeLanguageCode("Greek"))
+    }
+
+    @Test
+    fun testResolveLocaleForLanguage_withVariousLanguages() {
+        assertEquals(Locale.ENGLISH, resolveLocaleForLanguage("English"))
+        assertEquals(Locale.forLanguageTag("vi-VN"), resolveLocaleForLanguage("Vietnamese"))
+        assertEquals(Locale.SIMPLIFIED_CHINESE, resolveLocaleForLanguage("Chinese (Simplified)"))
+        assertEquals(Locale.TRADITIONAL_CHINESE, resolveLocaleForLanguage("Chinese (Traditional)"))
+        assertEquals("pt", resolveLocaleForLanguage("Portuguese (Brazil)").language)
+        assertEquals("pl", resolveLocaleForLanguage("Polish").language)
+        assertEquals("tr", resolveLocaleForLanguage("Turkish").language)
+        assertEquals("nl", resolveLocaleForLanguage("Dutch").language)
+        assertEquals("sv", resolveLocaleForLanguage("Swedish").language)
     }
 }
 

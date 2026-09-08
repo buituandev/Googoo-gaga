@@ -8,6 +8,9 @@
     <string name="title_history">Lịch sử</string>
     <string name="title_recent_translations">Bản dịch gần đây</string>
     <string name="search_history_placeholder">Tìm kiếm bản dịch…</string>
+    <string name="search_language_placeholder">Tìm kiếm ngôn ngữ…</string>
+    <string name="section_popular_languages">Ngôn ngữ phổ biến</string>
+    <string name="section_all_languages">Tất cả ngôn ngữ</string>
     <string name="empty_history_title">Không có bản dịch</string>
     <string name="empty_history_desc">Lịch sử dịch thuật sẽ hiển thị ở đây.</string>
     <string name="no_search_results_title">Không có kết quả nào</string>
