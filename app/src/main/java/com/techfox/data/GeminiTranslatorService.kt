@@ -1,4 +1,4 @@
-package com.example.data
+package com.techfox.data
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

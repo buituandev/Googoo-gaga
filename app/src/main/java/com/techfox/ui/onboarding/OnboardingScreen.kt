@@ -1,4 +1,4 @@
-package com.example.ui.onboarding
+package com.techfox.ui.onboarding
 
 import android.content.ClipboardManager
 import android.content.Context
@@ -71,11 +71,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
-import com.example.R
-import com.example.ui.components.ExpressiveButton
-import com.example.ui.components.ExpressiveIconButton
-import com.example.ui.theme.PillShape
-import com.example.ui.theme.TextFieldShape
+import com.techfox.R
+import com.techfox.ui.components.ExpressiveButton
+import com.techfox.ui.components.ExpressiveIconButton
+import com.techfox.ui.theme.PillShape
+import com.techfox.ui.theme.TextFieldShape
 
 @Composable
 fun OnboardingScreen(

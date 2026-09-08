@@ -1,17 +1,17 @@
-package com.example.ui.subtitle
+package com.techfox.ui.subtitle
 
 import android.app.Application
 import androidx.annotation.StringRes
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.R
-import com.example.data.subtitle.InputFormat
-import com.example.data.subtitle.SubtitleCharacter
-import com.example.data.subtitle.SubtitleCue
-import com.example.data.subtitle.SubtitleJobEntity
-import com.example.data.subtitle.SubtitleParser
-import com.example.data.subtitle.SubtitlePreset
-import com.example.data.subtitle.SubtitleRepository
+import com.techfox.R
+import com.techfox.data.subtitle.InputFormat
+import com.techfox.data.subtitle.SubtitleCharacter
+import com.techfox.data.subtitle.SubtitleCue
+import com.techfox.data.subtitle.SubtitleJobEntity
+import com.techfox.data.subtitle.SubtitleParser
+import com.techfox.data.subtitle.SubtitlePreset
+import com.techfox.data.subtitle.SubtitleRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

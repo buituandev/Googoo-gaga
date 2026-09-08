@@ -1,14 +1,11 @@
-package com.example
+package com.techfox
 
 import android.content.Context
-import androidx.graphics.shapes.CornerRounding
-import androidx.graphics.shapes.Morph
-import androidx.graphics.shapes.RoundedPolygon
 import androidx.graphics.shapes.circle
 import androidx.graphics.shapes.pill
 import androidx.graphics.shapes.star
 import androidx.test.core.app.ApplicationProvider
-import com.example.data.PreferencesManager
+import com.techfox.data.PreferencesManager
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -88,10 +85,10 @@ class OnboardingTest {
 
     @Test
     fun testOnboardingActivity_createIntent() {
-        val defaultIntent = com.example.ui.onboarding.OnboardingActivity.createIntent(context)
-        assertFalse(defaultIntent.getBooleanExtra(com.example.ui.onboarding.OnboardingActivity.EXTRA_FROM_SETTINGS, false))
+        val defaultIntent = com.techfox.ui.onboarding.OnboardingActivity.createIntent(context)
+        assertFalse(defaultIntent.getBooleanExtra(com.techfox.ui.onboarding.OnboardingActivity.EXTRA_FROM_SETTINGS, false))
 
-        val settingsIntent = com.example.ui.onboarding.OnboardingActivity.createIntent(context, fromSettings = true)
-        assertTrue(settingsIntent.getBooleanExtra(com.example.ui.onboarding.OnboardingActivity.EXTRA_FROM_SETTINGS, false))
+        val settingsIntent = com.techfox.ui.onboarding.OnboardingActivity.createIntent(context, fromSettings = true)
+        assertTrue(settingsIntent.getBooleanExtra(com.techfox.ui.onboarding.OnboardingActivity.EXTRA_FROM_SETTINGS, false))
     }
 }

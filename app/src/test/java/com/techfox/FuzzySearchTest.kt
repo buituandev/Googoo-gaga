@@ -1,14 +1,14 @@
-package com.example
+package com.techfox
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
-import com.example.data.FuzzySearch
-import com.example.data.KeyTermInsight
-import com.example.data.TranslationEntity
-import com.example.data.fuzzyFilter
-import com.example.data.fuzzySearch
-import com.example.data.highlightFuzzyMatch
-import com.example.data.searchTranslations
+import com.techfox.data.FuzzySearch
+import com.techfox.data.KeyTermInsight
+import com.techfox.data.TranslationEntity
+import com.techfox.data.fuzzyFilter
+import com.techfox.data.fuzzySearch
+import com.techfox.data.highlightFuzzyMatch
+import com.techfox.data.searchTranslations
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

@@ -1,4 +1,4 @@
-package com.example.data.subtitle
+package com.techfox.data.subtitle
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

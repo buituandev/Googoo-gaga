@@ -1,4 +1,4 @@
-package com.example.ui.onboarding
+package com.techfox.ui.onboarding
 
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing

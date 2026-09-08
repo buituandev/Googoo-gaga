@@ -1,10 +1,10 @@
-package com.example
+package com.techfox
 
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
-import com.example.ui.TranslateScreen
-import com.example.ui.UiState
-import com.example.ui.theme.MyApplicationTheme
+import com.techfox.ui.TranslateScreen
+import com.techfox.ui.UiState
+import com.techfox.ui.theme.MyApplicationTheme
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Rule

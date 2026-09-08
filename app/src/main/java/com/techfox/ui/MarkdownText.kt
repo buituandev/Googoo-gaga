@@ -1,4 +1,4 @@
-package com.example.ui
+package com.techfox.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier

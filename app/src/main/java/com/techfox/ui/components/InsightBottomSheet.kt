@@ -1,4 +1,4 @@
-package com.example.ui.components
+package com.techfox.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -40,11 +40,11 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.R
-import com.example.ui.FormattedMarkdownText
-import com.example.ui.theme.BottomSheetShape
-import com.example.ui.theme.CardShape
-import com.example.ui.theme.PillShape
+import com.techfox.R
+import com.techfox.ui.FormattedMarkdownText
+import com.techfox.ui.theme.BottomSheetShape
+import com.techfox.ui.theme.CardShape
+import com.techfox.ui.theme.PillShape
 
 /**
  * Reusable modal bottom sheet for displaying linguistic insights and context.

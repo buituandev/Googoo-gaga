@@ -1,4 +1,4 @@
-package com.example.ui
+package com.techfox.ui
 
 import android.content.ClipboardManager
 import android.content.Context
@@ -44,7 +44,6 @@ import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -72,20 +71,20 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.example.R
-import com.example.data.KeyTermInsight
-import com.example.data.LanguageDetector
-import com.example.data.TranslationEntity
-import com.example.ui.components.ExpressiveIconButton
-import com.example.ui.components.InsightBottomSheet
-import com.example.ui.components.InteractiveTranslationText
-import com.example.ui.components.KeyTermBottomSheet
-import com.example.ui.components.LanguageDropdownSelector
-import com.example.ui.components.copyToClipboard
-import com.example.ui.components.rememberTtsController
-import com.example.ui.components.shareText
-import com.example.ui.theme.CardShape
-import com.example.ui.theme.PillShape
+import com.techfox.R
+import com.techfox.data.KeyTermInsight
+import com.techfox.data.LanguageDetector
+import com.techfox.data.TranslationEntity
+import com.techfox.ui.components.ExpressiveIconButton
+import com.techfox.ui.components.InsightBottomSheet
+import com.techfox.ui.components.InteractiveTranslationText
+import com.techfox.ui.components.KeyTermBottomSheet
+import com.techfox.ui.components.LanguageDropdownSelector
+import com.techfox.ui.components.copyToClipboard
+import com.techfox.ui.components.rememberTtsController
+import com.techfox.ui.components.shareText
+import com.techfox.ui.theme.CardShape
+import com.techfox.ui.theme.PillShape
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)

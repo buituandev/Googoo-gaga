@@ -1,4 +1,4 @@
-package com.example.ui.subtitle
+package com.techfox.ui.subtitle
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -16,9 +16,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.example.R
-import com.example.data.subtitle.SubtitleCharacter
-import com.example.ui.theme.TextFieldShape
+import com.techfox.R
+import com.techfox.data.subtitle.SubtitleCharacter
 
 @Composable
 fun CharacterRowItem(

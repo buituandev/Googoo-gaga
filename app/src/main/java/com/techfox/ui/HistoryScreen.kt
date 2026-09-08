@@ -1,4 +1,4 @@
-package com.example.ui
+package com.techfox.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -62,11 +62,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.example.R
-import com.example.data.TranslationEntity
-import com.example.data.highlightFuzzyMatch
-import com.example.data.searchTranslations
-import com.example.ui.theme.PillShape
+import com.techfox.R
+import com.techfox.data.TranslationEntity
+import com.techfox.data.highlightFuzzyMatch
+import com.techfox.data.searchTranslations
+import com.techfox.ui.theme.PillShape
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date

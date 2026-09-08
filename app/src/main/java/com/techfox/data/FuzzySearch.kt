@@ -1,6 +1,6 @@
 @file:Suppress("unused")
 
-package com.example.data
+package com.techfox.data
 
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle

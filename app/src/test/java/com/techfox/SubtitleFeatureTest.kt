@@ -1,12 +1,12 @@
-package com.example
+package com.techfox
 
-import com.example.data.subtitle.InputFormat
-import com.example.data.subtitle.SubtitleCharacter
-import com.example.data.subtitle.SubtitleCue
-import com.example.data.subtitle.SubtitleJobEntity
-import com.example.data.subtitle.SubtitleNoiseFilter
-import com.example.data.subtitle.SubtitleParser
-import com.example.data.subtitle.SubtitlePreset
+import com.techfox.data.subtitle.InputFormat
+import com.techfox.data.subtitle.SubtitleCharacter
+import com.techfox.data.subtitle.SubtitleCue
+import com.techfox.data.subtitle.SubtitleJobEntity
+import com.techfox.data.subtitle.SubtitleNoiseFilter
+import com.techfox.data.subtitle.SubtitleParser
+import com.techfox.data.subtitle.SubtitlePreset
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

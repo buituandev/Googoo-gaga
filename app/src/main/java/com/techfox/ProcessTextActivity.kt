@@ -1,4 +1,4 @@
-package com.example
+package com.techfox
 
 import android.content.Intent
 import android.os.Bundle
@@ -56,21 +56,21 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.data.KeyTermInsight
-import com.example.data.TranslationEntity
-import com.example.data.TranslationRepository
-import com.example.ui.components.ExpressiveIconButton
-import com.example.ui.components.InsightBottomSheet
-import com.example.ui.components.InteractiveTranslationText
-import com.example.ui.components.KeyTermBottomSheet
-import com.example.ui.components.LanguageDropdownSelector
-import com.example.ui.components.copyToClipboard
-import com.example.ui.components.rememberTtsController
-import com.example.ui.components.shareText
-import com.example.ui.theme.CardShape
-import com.example.ui.theme.DialogShape
-import com.example.ui.theme.MyApplicationTheme
-import com.example.ui.theme.PillShape
+import com.techfox.data.KeyTermInsight
+import com.techfox.data.TranslationEntity
+import com.techfox.data.TranslationRepository
+import com.techfox.ui.components.ExpressiveIconButton
+import com.techfox.ui.components.InsightBottomSheet
+import com.techfox.ui.components.InteractiveTranslationText
+import com.techfox.ui.components.KeyTermBottomSheet
+import com.techfox.ui.components.LanguageDropdownSelector
+import com.techfox.ui.components.copyToClipboard
+import com.techfox.ui.components.rememberTtsController
+import com.techfox.ui.components.shareText
+import com.techfox.ui.theme.CardShape
+import com.techfox.ui.theme.DialogShape
+import com.techfox.ui.theme.MyApplicationTheme
+import com.techfox.ui.theme.PillShape
 import kotlinx.coroutines.launch
 
 class ProcessTextActivity : ComponentActivity() {

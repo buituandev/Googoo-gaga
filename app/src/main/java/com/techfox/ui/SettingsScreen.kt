@@ -1,4 +1,4 @@
-package com.example.ui
+package com.techfox.ui
 
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -70,9 +70,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.example.R
-import com.example.ui.onboarding.OnboardingActivity
-import com.example.ui.theme.PillShape
+import com.techfox.R
+import com.techfox.ui.onboarding.OnboardingActivity
+import com.techfox.ui.theme.PillShape
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable

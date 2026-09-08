@@ -1,4 +1,4 @@
-package com.example.ui.components
+package com.techfox.ui.components
 
 import android.os.Handler
 import android.os.Looper
@@ -11,7 +11,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import com.google.mlkit.nl.languageid.LanguageIdentification
 import java.util.Locale
 
 /**
@@ -152,37 +151,15 @@ fun rememberTtsController(): TtsController {
                     isSpeaking = true
 
                     val clean = language.trim().lowercase(Locale.ROOT)
-                    if (clean == "auto" || clean.isBlank()) {
-                        try {
-                            LanguageIdentification.getClient().identifyLanguage(text)
-                                .addOnSuccessListener { code ->
-                                    val locale = if (code != "und" && !code.isNullOrBlank()) {
-                                        resolveLocaleForLanguage(code, text)
-                                    } else {
-                                        detectLocaleFromText(text)
-                                    }
-                                    tts?.language = locale
-                                    val utteranceId = "TtsUtterance_${System.currentTimeMillis()}"
-                                    tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
-                                }
-                                .addOnFailureListener {
-                                    val locale = detectLocaleFromText(text)
-                                    tts?.language = locale
-                                    val utteranceId = "TtsUtterance_${System.currentTimeMillis()}"
-                                    tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
-                                }
-                        } catch (_: Throwable) {
-                            val locale = detectLocaleFromText(text)
-                            tts?.language = locale
-                            val utteranceId = "TtsUtterance_${System.currentTimeMillis()}"
-                            tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
-                        }
+                    val locale = if (clean == "auto" || clean.isBlank()) {
+                        val detectedCode = com.techfox.data.LanguageDetector.identify(text)
+                        resolveLocaleForLanguage(detectedCode, text)
                     } else {
-                        val locale = resolveLocaleForLanguage(language, text)
-                        tts?.language = locale
-                        val utteranceId = "TtsUtterance_${System.currentTimeMillis()}"
-                        tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
+                        resolveLocaleForLanguage(language, text)
                     }
+                    tts?.language = locale
+                    val utteranceId = "TtsUtterance_${System.currentTimeMillis()}"
+                    tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
                 }
             }
         )

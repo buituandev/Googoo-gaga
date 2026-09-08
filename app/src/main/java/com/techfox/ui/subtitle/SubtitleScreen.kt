@@ -1,4 +1,4 @@
-package com.example.ui.subtitle
+package com.techfox.ui.subtitle
 
 import android.content.ClipboardManager
 import android.content.Context
@@ -25,7 +25,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.Code
@@ -42,7 +41,6 @@ import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.Subtitles
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
@@ -71,17 +69,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.example.R
-import com.example.data.subtitle.InputFormat
-import com.example.data.subtitle.SubtitleCharacter
-import com.example.data.subtitle.SubtitlePreset
-import com.example.ui.components.ExpressiveButton
-import com.example.ui.components.ExpressiveIconButton
-import com.example.ui.components.LanguageDropdownSelector
-import com.example.ui.components.copyToClipboard
-import com.example.ui.theme.CardShape
-import com.example.ui.theme.PillShape
-import com.example.ui.theme.TextFieldShape
+import com.techfox.R
+import com.techfox.data.subtitle.InputFormat
+import com.techfox.data.subtitle.SubtitleCharacter
+import com.techfox.data.subtitle.SubtitlePreset
+import com.techfox.ui.components.ExpressiveButton
+import com.techfox.ui.components.ExpressiveIconButton
+import com.techfox.ui.components.LanguageDropdownSelector
+import com.techfox.ui.components.copyToClipboard
+import com.techfox.ui.theme.CardShape
+import com.techfox.ui.theme.PillShape
+import com.techfox.ui.theme.TextFieldShape
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -1,10 +1,10 @@
-package com.example.ui
+package com.techfox.ui
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.data.TranslationEntity
-import com.example.data.TranslationRepository
+import com.techfox.data.TranslationEntity
+import com.techfox.data.TranslationRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

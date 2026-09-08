@@ -1,4 +1,4 @@
-package com.example.ui.components
+package com.techfox.ui.components
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,10 +29,10 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.R
-import com.example.data.KeyTermInsight
-import com.example.ui.FormattedMarkdownText
-import com.example.ui.theme.PillShape
+import com.techfox.R
+import com.techfox.data.KeyTermInsight
+import com.techfox.ui.FormattedMarkdownText
+import com.techfox.ui.theme.PillShape
 
 private data class TermSpan(
     val start: Int,

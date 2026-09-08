@@ -1,11 +1,11 @@
-package com.example
+package com.techfox
 
-import com.example.data.GeminiTranslatorService
-import com.example.data.KeyTermInsight
-import com.example.data.LanguageDetector
-import com.example.data.TextSanitizer
-import com.example.ui.components.detectLocaleFromText
-import com.example.ui.components.resolveLocaleForLanguage
+import com.techfox.data.GeminiTranslatorService
+import com.techfox.data.KeyTermInsight
+import com.techfox.data.LanguageDetector
+import com.techfox.data.TextSanitizer
+import com.techfox.ui.components.detectLocaleFromText
+import com.techfox.ui.components.resolveLocaleForLanguage
 import java.util.Locale
 import org.junit.Assert.*
 import org.junit.Test

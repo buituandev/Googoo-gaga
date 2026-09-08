@@ -1,7 +1,7 @@
-package com.example.data.subtitle
+package com.techfox.data.subtitle
 
 import androidx.annotation.StringRes
-import com.example.R
+import com.techfox.R
 import java.util.UUID
 
 enum class InputFormat(

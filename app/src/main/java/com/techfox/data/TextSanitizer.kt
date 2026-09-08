@@ -1,4 +1,4 @@
-package com.example.data
+package com.techfox.data
 
 /**
  * Utility for sanitizing URLs, smart-formatting text (collapsing excessive spaces & line breaks),

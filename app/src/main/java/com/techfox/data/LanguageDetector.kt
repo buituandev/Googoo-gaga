@@ -1,37 +1,52 @@
-package com.example.data
+package com.techfox.data
 
-import com.example.ui.components.detectLocaleFromText
-import com.google.mlkit.nl.languageid.LanguageIdentification
-import com.google.mlkit.nl.languageid.LanguageIdentifier
+import com.github.pemistahl.lingua.api.Language
+import com.github.pemistahl.lingua.api.LanguageDetector as LinguaDetector
+import com.github.pemistahl.lingua.api.LanguageDetectorBuilder
+import com.techfox.ui.components.detectLocaleFromText
 import java.util.Locale
-import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
- * On-device language detection using Google ML Kit with heuristic script/character fallback.
+ * On-device language detection using Lingua (FOSS) with heuristic script/character fallback.
  */
 object LanguageDetector {
-    private val mlKitIdentifier: LanguageIdentifier by lazy {
-        LanguageIdentification.getClient()
+    private val linguaDetector: LinguaDetector by lazy {
+        LanguageDetectorBuilder
+            .fromAllSpokenLanguages()
+            .withLowAccuracyMode()
+            .build()
     }
 
     /**
-     * Identifies the language of the given text using Google ML Kit on-device model,
-     * falling back to script/character heuristic analysis when ML Kit returns undetermined ("und") or encounters an error.
+     * Identifies the language of the given text using Lingua on-device model,
+     * falling back to script/character heuristic analysis when Lingua returns UNKNOWN or encounters an error.
      *
      * @param text The input text/phrase to analyze.
      * @return BCP-47 language tag (e.g. "en", "vi", "fr", "es", "de", "ja", "ko", "zh", "ru", "ar", "th").
      */
-    suspend fun identifyLanguage(text: String): String {
+    suspend fun identifyLanguage(text: String): String = withContext(Dispatchers.Default) {
+        identify(text)
+    }
+
+    /**
+     * Synchronous identification using Lingua with script/character fallback.
+     */
+    fun identify(text: String): String {
         val trimmed = text.trim()
         if (trimmed.isEmpty()) return "en"
 
         try {
-            val languageCode = mlKitIdentifier.identifyLanguage(trimmed).await()
-            if (languageCode != null && languageCode != "und" && languageCode.isNotBlank()) {
-                return languageCode
+            val detected = linguaDetector.detectLanguageOf(trimmed)
+            if (detected != Language.UNKNOWN) {
+                val code = detected.isoCode639_1.name.lowercase(Locale.ROOT)
+                if (code.isNotBlank() && code != "none") {
+                    return code
+                }
             }
         } catch (_: Throwable) {
-            // Fallback gracefully on any ML Kit initialization / task exception
+            // Fallback gracefully on any Lingua exception
         }
 
         // Script / character range heuristic fallback

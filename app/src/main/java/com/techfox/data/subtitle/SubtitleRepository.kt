@@ -1,8 +1,8 @@
-package com.example.data.subtitle
+package com.techfox.data.subtitle
 
 import android.content.Context
-import com.example.data.AppDatabase
-import com.example.data.PreferencesManager
+import com.techfox.data.AppDatabase
+import com.techfox.data.PreferencesManager
 import kotlinx.coroutines.flow.Flow
 import java.security.MessageDigest
 

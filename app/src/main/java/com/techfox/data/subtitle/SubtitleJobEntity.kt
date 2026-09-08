@@ -1,4 +1,4 @@
-package com.example.data.subtitle
+package com.techfox.data.subtitle
 
 import androidx.room.Dao
 import androidx.room.Delete

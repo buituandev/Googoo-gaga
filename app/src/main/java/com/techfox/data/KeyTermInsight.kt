@@ -1,4 +1,4 @@
-package com.example.data
+package com.techfox.data
 
 import org.json.JSONArray
 import org.json.JSONObject

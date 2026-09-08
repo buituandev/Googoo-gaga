@@ -1,4 +1,4 @@
-package com.example.ui.theme
+package com.techfox.ui.theme
 
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape

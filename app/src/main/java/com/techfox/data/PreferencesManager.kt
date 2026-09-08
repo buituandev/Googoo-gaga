@@ -1,4 +1,4 @@
-package com.example.data
+package com.techfox.data
 
 import android.content.Context
 import android.content.SharedPreferences

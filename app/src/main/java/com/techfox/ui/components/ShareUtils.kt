@@ -1,11 +1,11 @@
-package com.example.ui.components
+package com.techfox.ui.components
 
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
-import com.example.R
+import com.techfox.R
 
 /**
  * Copies text to system clipboard and displays a short confirmation Toast.

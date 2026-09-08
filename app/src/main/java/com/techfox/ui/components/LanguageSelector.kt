@@ -1,4 +1,4 @@
-package com.example.ui.components
+package com.techfox.ui.components
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -29,11 +29,11 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.R
-import com.example.ui.PRESET_LANGUAGES
-import com.example.ui.theme.CardShape
-import com.example.ui.theme.PillShape
-import com.example.ui.theme.TextFieldShape
+import com.techfox.R
+import com.techfox.ui.PRESET_LANGUAGES
+import com.techfox.ui.theme.CardShape
+import com.techfox.ui.theme.PillShape
+import com.techfox.ui.theme.TextFieldShape
 
 /**
  * Reusable language selector dropdown with preset options and a custom language input dialog.

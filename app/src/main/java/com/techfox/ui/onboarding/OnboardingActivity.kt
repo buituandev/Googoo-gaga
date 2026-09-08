@@ -1,4 +1,4 @@
-package com.example.ui.onboarding
+package com.techfox.ui.onboarding
 
 import android.content.Context
 import android.content.Intent
@@ -6,9 +6,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import com.example.MainActivity
-import com.example.data.PreferencesManager
-import com.example.ui.theme.MyApplicationTheme
+import com.techfox.MainActivity
+import com.techfox.data.PreferencesManager
+import com.techfox.ui.theme.MyApplicationTheme
 
 class OnboardingActivity : ComponentActivity() {
 

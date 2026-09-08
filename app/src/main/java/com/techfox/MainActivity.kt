@@ -1,4 +1,4 @@
-package com.example
+package com.techfox
 
 import android.content.Intent
 import android.os.Bundle
@@ -39,15 +39,15 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.data.PreferencesManager
-import com.example.ui.HistoryScreen
-import com.example.ui.MainViewModel
-import com.example.ui.SettingsScreen
-import com.example.ui.TranslateScreen
-import com.example.ui.onboarding.OnboardingActivity
-import com.example.ui.subtitle.SubtitleScreen
-import com.example.ui.subtitle.SubtitleViewModel
-import com.example.ui.theme.MyApplicationTheme
+import com.techfox.data.PreferencesManager
+import com.techfox.ui.HistoryScreen
+import com.techfox.ui.MainViewModel
+import com.techfox.ui.SettingsScreen
+import com.techfox.ui.TranslateScreen
+import com.techfox.ui.onboarding.OnboardingActivity
+import com.techfox.ui.subtitle.SubtitleScreen
+import com.techfox.ui.subtitle.SubtitleViewModel
+import com.techfox.ui.theme.MyApplicationTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

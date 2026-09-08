@@ -1,4 +1,4 @@
-package com.example.ui.subtitle
+package com.techfox.ui.subtitle
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -46,11 +46,11 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.R
-import com.example.data.subtitle.InputFormat
-import com.example.data.subtitle.SubtitleCue
-import com.example.ui.theme.PillShape
-import com.example.ui.theme.TextFieldShape
+import com.techfox.R
+import com.techfox.data.subtitle.InputFormat
+import com.techfox.data.subtitle.SubtitleCue
+import com.techfox.ui.theme.PillShape
+import com.techfox.ui.theme.TextFieldShape
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
