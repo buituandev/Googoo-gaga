@@ -17,8 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -48,8 +46,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SheetValue
-import androidx.compose.material3.SuggestionChip
-import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -74,7 +70,6 @@ import androidx.compose.ui.unit.dp
 import com.techfox.R
 import com.techfox.data.KeyTermInsight
 import com.techfox.data.LanguageDetector
-import com.techfox.data.TranslationEntity
 import com.techfox.ui.components.ExpressiveIconButton
 import com.techfox.ui.components.InsightBottomSheet
 import com.techfox.ui.components.InteractiveTranslationText
@@ -95,7 +90,6 @@ fun TranslateScreen(
     onTargetLanguageChanged: (String) -> Unit,
     onTranslateClicked: () -> Unit,
     onClearClicked: () -> Unit,
-    onHistoryItemSelected: (TranslationEntity) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -304,7 +298,6 @@ fun TranslateScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Translation & Insight Result Card (or empty state)
         val current = state.currentTranslation
         Card(
             modifier = Modifier
@@ -528,44 +521,6 @@ fun TranslateScreen(
                 }
             )
         }
-
-        // Recent translations quick suggestion chips if available
-        if (state.history.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(24.dp))
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-            ) {
-                Text(
-                    text = stringResource(R.string.title_recent_translations),
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(state.history.take(6)) { item ->
-                        SuggestionChip(
-                            onClick = { onHistoryItemSelected(item) },
-                            label = {
-                                Text(
-                                    text = item.sourceText.take(24) + if (item.sourceText.length > 24) "…" else "",
-                                    style = MaterialTheme.typography.labelMedium
-                                )
-                            },
-                            shape = PillShape,
-                            colors = SuggestionChipDefaults.suggestionChipColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                            )
-                        )
-                    }
-                }
-            }
-        }
-
         Spacer(modifier = Modifier.height(24.dp))
     }
 }

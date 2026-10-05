@@ -3,9 +3,9 @@ package com.techfox.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.techfox.data.PreferencesManager
 import com.techfox.data.TranslationEntity
 import com.techfox.data.TranslationRepository
-import com.techfox.ui.components.FULL_LANGUAGE_LIST
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,11 +26,11 @@ data class UiState(
     val currentTab: Int = 0, // 0 = Translate, 1 = Subtitles, 2 = History, 3 = Settings
     val errorMessage: String? = null,
     val successMessage: String? = null,
+    val translationWarning: String? = null,
     val history: List<TranslationEntity> = emptyList(),
     val isOnboardingCompleted: Boolean = false
 )
 
-val PRESET_LANGUAGES: List<String> = FULL_LANGUAGE_LIST
 val PRESET_MODELS = listOf("gemini-3.1-flash-lite", "gemma-4-26b-a4b-it", "gemini-3.8-flash")
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -42,6 +42,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     init {
         loadSettings()
         observeHistory()
+        observePreferences()
+    }
+
+    fun reloadSettings() {
+        loadSettings()
     }
 
     private fun loadSettings() {
@@ -63,6 +68,56 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         if (savedKey.isNotBlank()) {
             fetchAvailableModels(savedKey)
+        }
+    }
+
+    private fun observePreferences() {
+        viewModelScope.launch {
+            PreferencesManager.preferenceChangedFlow.collect { key ->
+                when (key) {
+                    PreferencesManager.KEY_API_KEY -> {
+                        val newKey = repository.preferences.getApiKey()
+                        if (_uiState.value.apiKey != newKey) {
+                            _uiState.value = _uiState.value.copy(apiKey = newKey)
+                            if (newKey.isNotBlank()) {
+                                fetchAvailableModels(newKey)
+                            } else {
+                                _uiState.value = _uiState.value.copy(availableModels = PRESET_MODELS, isLoadingModels = false)
+                            }
+                        }
+                    }
+                    PreferencesManager.KEY_TARGET_LANGUAGE -> {
+                        val newLang = repository.preferences.getTargetLanguage()
+                        if (_uiState.value.targetLanguage != newLang) {
+                            _uiState.value = _uiState.value.copy(targetLanguage = newLang)
+                        }
+                    }
+                    PreferencesManager.KEY_MODEL -> {
+                        val newModel = repository.preferences.getModel()
+                        if (_uiState.value.model != newModel) {
+                            _uiState.value = _uiState.value.copy(model = newModel)
+                        }
+                    }
+                    PreferencesManager.KEY_CUSTOM_INSTRUCTION -> {
+                        val newInstr = repository.preferences.getCustomInstruction()
+                        if (_uiState.value.customInstruction != newInstr) {
+                            _uiState.value = _uiState.value.copy(customInstruction = newInstr)
+                        }
+                    }
+                    PreferencesManager.KEY_ENABLE_INSIGHT -> {
+                        val newInsight = repository.preferences.isInsightEnabled()
+                        if (_uiState.value.enableInsight != newInsight) {
+                            _uiState.value = _uiState.value.copy(enableInsight = newInsight)
+                        }
+                    }
+                    PreferencesManager.KEY_ONBOARDING_COMPLETED -> {
+                        val newOnboarding = repository.preferences.isOnboardingCompleted()
+                        if (_uiState.value.isOnboardingCompleted != newOnboarding) {
+                            _uiState.value = _uiState.value.copy(isOnboardingCompleted = newOnboarding)
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -140,11 +195,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.value = _uiState.value.copy(
             inputText = "",
             currentTranslation = null,
-            errorMessage = null
+            errorMessage = null,
+            translationWarning = null
         )
     }
 
-    fun translate() {
+    fun translate(isStrictRetry: Boolean = false) {
         val currentText = _uiState.value.inputText.trim()
         if (currentText.isBlank()) {
             _uiState.value = _uiState.value.copy(errorMessage = "Please enter text to translate")
@@ -152,14 +208,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         val lang = _uiState.value.targetLanguage
-        _uiState.value = _uiState.value.copy(isTranslating = true, errorMessage = null)
+        val previousWarning = if (isStrictRetry) _uiState.value.translationWarning.orEmpty() else ""
+        val existingId = if (isStrictRetry) _uiState.value.currentTranslation?.id else null
+
+        _uiState.value = _uiState.value.copy(
+            isTranslating = true,
+            errorMessage = null,
+            translationWarning = null
+        )
 
         viewModelScope.launch {
-            val result = repository.translateAndSave(currentText, lang)
-            result.onSuccess { entity ->
+            val result = repository.translateAndSave(
+                text = currentText,
+                targetLanguage = lang,
+                isStrictRetry = isStrictRetry,
+                previousWarning = previousWarning,
+                existingEntityId = existingId
+            )
+            result.onSuccess { (entity, warning) ->
                 _uiState.value = _uiState.value.copy(
                     isTranslating = false,
-                    currentTranslation = entity
+                    currentTranslation = entity,
+                    translationWarning = warning
                 )
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(
@@ -170,8 +240,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun retryTranslationStrict() {
+        translate(isStrictRetry = true)
+    }
+
+    fun dismissWarning() {
+        _uiState.value = _uiState.value.copy(translationWarning = null)
+    }
+
     fun dismissMessages() {
-        _uiState.value = _uiState.value.copy(errorMessage = null, successMessage = null)
+        _uiState.value = _uiState.value.copy(
+            errorMessage = null,
+            successMessage = null,
+            translationWarning = null
+        )
     }
 
     fun selectHistoryItem(item: TranslationEntity) {

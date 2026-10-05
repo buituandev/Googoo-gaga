@@ -27,6 +27,12 @@ data class SubtitleCue(
     val isNoise: Boolean = false,
     val translatedText: String? = null
 ) {
+    val startMs: Long
+        get() = SubtitleParser.parseTimestampToMs(startTime)
+
+    val endMs: Long
+        get() = SubtitleParser.parseTimestampToMs(endTime)
+
     val effectiveTranslation: String
         get() = translatedText ?: text
 }

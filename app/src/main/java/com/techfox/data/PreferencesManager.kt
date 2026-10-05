@@ -3,23 +3,48 @@ package com.techfox.data
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 
 class PreferencesManager(context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("ai_translator_prefs", Context.MODE_PRIVATE)
 
     companion object {
-        private const val KEY_API_KEY = "gemini_api_key"
-        private const val KEY_MODEL = "gemini_model"
-        private const val KEY_TARGET_LANGUAGE = "target_language"
-        private const val KEY_CUSTOM_INSTRUCTION = "custom_instruction"
-        private const val KEY_ENABLE_INSIGHT = "enable_insight"
-        private const val KEY_SUBTITLE_PRESET_ID = "subtitle_preset_id"
-        private const val KEY_CUSTOM_SUBTITLE_PROMPT = "custom_subtitle_prompt"
-        private const val KEY_ONBOARDING_COMPLETED = "onboarding_completed"
+        const val KEY_API_KEY = "gemini_api_key"
+        const val KEY_MODEL = "gemini_model"
+        const val KEY_TARGET_LANGUAGE = "target_language"
+        const val KEY_CUSTOM_INSTRUCTION = "custom_instruction"
+        const val KEY_ENABLE_INSIGHT = "enable_insight"
+        const val KEY_ENABLE_TOKEN_GUARD = "enable_token_guard"
+        const val KEY_SUBTITLE_PRESET_ID = "subtitle_preset_id"
+        const val KEY_CUSTOM_SUBTITLE_PROMPT = "custom_subtitle_prompt"
+        const val KEY_ONBOARDING_COMPLETED = "onboarding_completed"
 
         const val DEFAULT_MODEL = "gemini-3.1-flash-lite"
         const val DEFAULT_TARGET_LANG = "Vietnamese"
         const val DEFAULT_SUBTITLE_PRESET_ID = "cinematic"
+
+        private val _preferenceChangedFlow = MutableSharedFlow<String>(
+            extraBufferCapacity = 64,
+            onBufferOverflow = BufferOverflow.DROP_OLDEST
+        )
+        val preferenceChangedFlow: SharedFlow<String> = _preferenceChangedFlow.asSharedFlow()
+
+        fun notifyPreferenceChanged(key: String) {
+            _preferenceChangedFlow.tryEmit(key)
+        }
+    }
+
+    private val preferenceChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key != null) {
+            _preferenceChangedFlow.tryEmit(key)
+        }
+    }
+
+    init {
+        prefs.registerOnSharedPreferenceChangeListener(preferenceChangeListener)
     }
 
     fun isOnboardingCompleted(): Boolean {
@@ -28,6 +53,7 @@ class PreferencesManager(context: Context) {
 
     fun setOnboardingCompleted(completed: Boolean) {
         prefs.edit { putBoolean(KEY_ONBOARDING_COMPLETED, completed) }
+        notifyPreferenceChanged(KEY_ONBOARDING_COMPLETED)
     }
 
     fun isInsightEnabled(): Boolean {
@@ -36,6 +62,16 @@ class PreferencesManager(context: Context) {
 
     fun setInsightEnabled(enabled: Boolean) {
         prefs.edit { putBoolean(KEY_ENABLE_INSIGHT, enabled) }
+        notifyPreferenceChanged(KEY_ENABLE_INSIGHT)
+    }
+
+    fun isTokenGuardEnabled(): Boolean {
+        return prefs.getBoolean(KEY_ENABLE_TOKEN_GUARD, true)
+    }
+
+    fun setTokenGuardEnabled(enabled: Boolean) {
+        prefs.edit { putBoolean(KEY_ENABLE_TOKEN_GUARD, enabled) }
+        notifyPreferenceChanged(KEY_ENABLE_TOKEN_GUARD)
     }
 
     fun getCustomInstruction(): String {
@@ -44,6 +80,7 @@ class PreferencesManager(context: Context) {
 
     fun setCustomInstruction(instruction: String) {
         prefs.edit { putString(KEY_CUSTOM_INSTRUCTION, instruction.trim()) }
+        notifyPreferenceChanged(KEY_CUSTOM_INSTRUCTION)
     }
 
     fun getSubtitlePresetId(): String {
@@ -52,6 +89,7 @@ class PreferencesManager(context: Context) {
 
     fun setSubtitlePresetId(presetId: String) {
         prefs.edit { putString(KEY_SUBTITLE_PRESET_ID, presetId.trim()) }
+        notifyPreferenceChanged(KEY_SUBTITLE_PRESET_ID)
     }
 
     fun getCustomSubtitlePrompt(): String {
@@ -60,6 +98,7 @@ class PreferencesManager(context: Context) {
 
     fun setCustomSubtitlePrompt(prompt: String) {
         prefs.edit { putString(KEY_CUSTOM_SUBTITLE_PROMPT, prompt) }
+        notifyPreferenceChanged(KEY_CUSTOM_SUBTITLE_PROMPT)
     }
 
     fun getApiKey(): String {
@@ -67,7 +106,6 @@ class PreferencesManager(context: Context) {
         if (userSavedKey.isNotBlank()) {
             return userSavedKey
         }
-        // Fallback to BuildConfig key if injected via secrets
         return try {
             ""
         } catch (e: Throwable) {
@@ -77,6 +115,7 @@ class PreferencesManager(context: Context) {
 
     fun setApiKey(apiKey: String) {
         prefs.edit { putString(KEY_API_KEY, apiKey.trim()) }
+        notifyPreferenceChanged(KEY_API_KEY)
     }
 
     fun getModel(): String {
@@ -85,6 +124,7 @@ class PreferencesManager(context: Context) {
 
     fun setModel(model: String) {
         prefs.edit { putString(KEY_MODEL, model) }
+        notifyPreferenceChanged(KEY_MODEL)
     }
 
     fun getTargetLanguage(): String {
@@ -93,5 +133,6 @@ class PreferencesManager(context: Context) {
 
     fun setTargetLanguage(language: String) {
         prefs.edit { putString(KEY_TARGET_LANGUAGE, language) }
+        notifyPreferenceChanged(KEY_TARGET_LANGUAGE)
     }
 }

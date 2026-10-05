@@ -88,6 +88,7 @@ object SubtitleParser {
             var startTime = ""
             var endTime = ""
             var rawTiming = ""
+            var inlineText = ""
 
             for (i in lines.indices) {
                 val matcher = SRT_TIMING_REGEX.matcher(lines[i])
@@ -95,6 +96,7 @@ object SubtitleParser {
                     timingLineIndex = i
                     startTime = matcher.group(1) ?: ""
                     endTime = matcher.group(2) ?: ""
+                    inlineText = matcher.group(3)?.trim().orEmpty()
                     rawTiming = lines[i]
                     break
                 }
@@ -108,7 +110,11 @@ object SubtitleParser {
                 }
 
                 val textLines = lines.drop(timingLineIndex + 1)
-                val text = textLines.joinToString("\n").trim()
+                val text = if (textLines.isNotEmpty()) {
+                    textLines.joinToString("\n").trim()
+                } else {
+                    inlineText
+                }
                 val isNoise = SubtitleNoiseFilter.isNoiseOrFiller(text)
 
                 cues.add(
@@ -158,12 +164,14 @@ object SubtitleParser {
             var timingLine = ""
             var startTime = ""
             var endTime = ""
+            var inlineText = ""
 
             val matcher = VTT_TIMING_REGEX.matcher(line)
             if (matcher.matches()) {
                 timingLine = line
                 startTime = matcher.group(1) ?: ""
                 endTime = matcher.group(2) ?: ""
+                inlineText = matcher.group(3)?.trim().orEmpty()
                 i++
             } else if (i + 1 < lines.size) {
                 val nextMatcher = VTT_TIMING_REGEX.matcher(lines[i + 1])
@@ -171,6 +179,7 @@ object SubtitleParser {
                     timingLine = lines[i + 1]
                     startTime = nextMatcher.group(1) ?: ""
                     endTime = nextMatcher.group(2) ?: ""
+                    inlineText = nextMatcher.group(3)?.trim().orEmpty()
                     i += 2
                 }
             }
@@ -181,7 +190,11 @@ object SubtitleParser {
                     textBuilder.add(lines[i])
                     i++
                 }
-                val text = textBuilder.joinToString("\n").trim()
+                val text = if (textBuilder.isNotEmpty()) {
+                    textBuilder.joinToString("\n").trim()
+                } else {
+                    inlineText
+                }
                 val isNoise = SubtitleNoiseFilter.isNoiseOrFiller(text)
 
                 cues.add(
@@ -280,5 +293,30 @@ object SubtitleParser {
         }
 
         return Result.success(Unit)
+    }
+
+    /**
+     * Converts a subtitle timestamp string (e.g. "00:01:23,456" or "01:23.456") to milliseconds.
+     */
+    fun parseTimestampToMs(timestamp: String): Long {
+        val clean = timestamp.trim().replace(',', '.')
+        if (clean.isEmpty()) return 0L
+        val parts = clean.split(':')
+        return try {
+            if (parts.size == 3) {
+                val hours = parts[0].toLong()
+                val minutes = parts[1].toLong()
+                val seconds = parts[2].toDouble()
+                (hours * 3600000 + minutes * 60000 + (seconds * 1000).toLong())
+            } else if (parts.size == 2) {
+                val minutes = parts[0].toLong()
+                val seconds = parts[1].toDouble()
+                (minutes * 60000 + (seconds * 1000).toLong())
+            } else {
+                0L
+            }
+        } catch (_: Exception) {
+            0L
+        }
     }
 }

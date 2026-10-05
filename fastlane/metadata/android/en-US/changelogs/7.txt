@@ -1,0 +1,4 @@
+- Subtitle SRT/VTT translation with silence-aware smart chunking and checkpoint recovery.
+- Token Guard for non-dialogue cues and sound effect preservation.
+- Fix bugs and improve performance.
+- Update libraries

@@ -57,6 +57,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.techfox.data.KeyTermInsight
+import com.techfox.data.PreferencesManager
 import com.techfox.data.TranslationEntity
 import com.techfox.data.TranslationRepository
 import com.techfox.ui.components.ExpressiveIconButton
@@ -68,7 +69,6 @@ import com.techfox.ui.components.copyToClipboard
 import com.techfox.ui.components.rememberTtsController
 import com.techfox.ui.components.shareText
 import com.techfox.ui.theme.CardShape
-import com.techfox.ui.theme.DialogShape
 import com.techfox.ui.theme.MyApplicationTheme
 import com.techfox.ui.theme.PillShape
 import kotlinx.coroutines.launch
@@ -79,7 +79,6 @@ class ProcessTextActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Extract selected text across PROCESS_TEXT, SEND, or ClipData intents
         val selectedText = intent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.toString()
             ?: intent.getStringExtra(Intent.EXTRA_PROCESS_TEXT)
             ?: intent.getStringExtra(Intent.EXTRA_TEXT)
@@ -87,7 +86,6 @@ class ProcessTextActivity : ComponentActivity() {
             ?: intent.clipData?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(this)?.toString()
             ?: ""
 
-        // Extra process text readonly flag (true on read-only views like X feeds / captions)
         val isReadOnly = if (intent.action == Intent.ACTION_SEND) {
             true
         } else {
@@ -163,7 +161,7 @@ fun ProcessTextBottomSheet(
         errorMessage = null
         scope.launch {
             val result = repository.translateAndSave(sourceText, lang)
-            result.onSuccess { entity ->
+            result.onSuccess { (entity, _) ->
                 translationResult = entity
                 isTranslating = false
             }.onFailure { error ->
@@ -177,11 +175,20 @@ fun ProcessTextBottomSheet(
         doTranslate(targetLanguage)
     }
 
+    LaunchedEffect(Unit) {
+        PreferencesManager.preferenceChangedFlow.collect { key ->
+            if (key == PreferencesManager.KEY_TARGET_LANGUAGE) {
+                val latest = repository.preferences.getTargetLanguage()
+                if (targetLanguage != latest) {
+                    targetLanguage = latest
+                }
+            }
+        }
+    }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        shape = DialogShape,
-        containerColor = MaterialTheme.colorScheme.surface,
         modifier = Modifier.testTag("process_text_bottom_sheet")
     ) {
         Column(
@@ -253,7 +260,10 @@ fun ProcessTextBottomSheet(
             // Target language picker (reused)
             LanguageDropdownSelector(
                 targetLanguage = targetLanguage,
-                onTargetLanguageChanged = { targetLanguage = it },
+                onTargetLanguageChanged = { newLang ->
+                    targetLanguage = newLang
+                    repository.preferences.setTargetLanguage(newLang)
+                },
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -409,7 +419,6 @@ fun ProcessTextBottomSheet(
                     }
 
                     if (isReadOnly) {
-                        // Read-only source (e.g. X post / tweet caption) -> Offer Share
                         val shareContent = stringResource(
                             R.string.share_insights_format,
                             res.directTranslation,
@@ -439,7 +448,6 @@ fun ProcessTextBottomSheet(
                             Text(stringResource(R.string.btn_share))
                         }
                     } else {
-                        // Editable source (e.g. typing in text box) -> Offer Replace
                         Button(
                             onClick = { onReplaceText(res.directTranslation) },
                             modifier = Modifier.weight(1f),

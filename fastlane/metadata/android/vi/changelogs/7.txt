@@ -1,0 +1,4 @@
+- Dịch phụ đề SRT/VTT thông minh với phân đoạn khoảng lặng và tự động tiếp tục khi gián đoạn.
+- Token Guard lọc âm thanh hiệu ứng tự động giúp tiết kiệm token Gemini.
+- Sửa lỗi cải thiện hiệu năng
+- Cập nhật phiên bản thư viện

@@ -19,7 +19,8 @@ data class SubtitlePreset(
     val isCustom: Boolean = false
 ) {
     /**
-     * Builds the complete, production-grade Gemini prompt for a chunk of subtitle cues.
+     * Builds the complete, production-grade Gemini prompt for a chunk of subtitle cues
+     * using the decoupled Key-Value JSON schema with structured XML section delimiters.
      */
     fun buildSubtitlePrompt(
         targetLanguage: String,
@@ -29,33 +30,63 @@ data class SubtitlePreset(
         rollingContext: List<SubtitleCue>,
         cuesToTranslate: List<SubtitleCue>
     ): String = buildString {
-        // 1. Core Directives
-        val directives = if (isCustom && customInstruction.isNotBlank()) {
-            customInstruction.trim()
+        append("<system_instruction>\n")
+        append("You are an expert film, television, and media subtitle localization specialist.\n")
+        append("Your mission is to translate dialogue cues into natural, authentic spoken $targetLanguage.\n\n")
+
+        append("### TARGET LANGUAGE:\n")
+        append("Target Language: $targetLanguage\n")
+        append("CRITICAL REQUIREMENT: Translate the dialogue cues strictly into natural, authentic $targetLanguage. All translations must sound native and idiomatic. Do NOT output in English or any other language unless a specific term is an untranslatable proper name or brand.\n\n")
+
+        val processedCustom = replaceTargetLanguagePlaceholders(customInstruction, targetLanguage)
+        val directives = if (isCustom && processedCustom.isNotBlank()) {
+            processedCustom
         } else {
-            systemPromptDirectives.replace("%TARGET_LANG%", targetLanguage).trim()
+            replaceTargetLanguagePlaceholders(systemPromptDirectives, targetLanguage)
         }
+        append("### Translation Directives & Tone:\n")
         append(directives)
         append("\n\n")
 
-        // 2. Scene / Storyline Plot Context
-        if (contextDescription.isNotBlank()) {
-            append("### Storyline & Scene Context:\n")
-            append(contextDescription.trim())
-            append("\n\n")
-        }
-
-        // 3. User Global Custom Instructions (if not already acting as the custom directive)
-        if (!isCustom && customInstruction.isNotBlank()) {
+        if (!isCustom && processedCustom.isNotBlank()) {
             append("### Additional Custom Instructions:\n")
-            append(customInstruction.trim())
+            append(processedCustom)
             append("\n\n")
         }
 
-        // 4. Characters in Scene
+        append("### Output Rules & Strict 1:1 Cue Alignment:\n")
+        append("1. **STRICT 1:1 ID ALIGNMENT (Zero Shift / Zero Split)**:\n")
+        append("   - Each key in <input_to_translate> corresponds to EXACTLY ONE subtitle cue timestamp.\n")
+        append("   - The value for key \"<id>\" MUST be the COMPLETE translation of ONLY the text found in that specific input key \"<id>\".\n")
+        append("   - **NEVER** split a sentence from one key into the next key (e.g. if key \"63\" has \"I don't know if you're ever gonna see these.\", key \"63\"'s value must contain the full translated sentence; NEVER put the ending of that sentence into key \"64\").\n")
+        append("   - **NEVER** shift or cascade translations into subsequent keys. Key \"64\" MUST translate ONLY the text provided in key \"64\".\n")
+        append("2. **EXACT KEY MATCH**: Output MUST contain the EXACT same set of integer string keys as provided in <input_to_translate>. Do not omit keys, do not invent new keys, and do not merge keys.\n")
+        append("3. **MULTILINE & MULTI-SPEAKER CUES**: If an input cue contains multiple lines or dialogue hyphens (e.g. \"- Line 1\\n- Line 2\"), maintain the entire translated dialogue within that SAME single key.\n")
+        append("4. **JSON FORMAT ONLY**: Output ONLY a valid JSON object mapping integer string keys to translated string values: {\"<id>\": \"<translated text strictly in $targetLanguage>\"}. Do not include markdown code blocks, conversational comments, or explanations.\n\n")
+        append("### Concrete 1:1 Mapping Example:\n")
+        append("Input:\n")
+        append("{\n")
+        append("  \"10\": \"I don't know if you're\\never gonna see these.\",\n")
+        append("  \"11\": \"I don't even know if you're still alive.\"\n")
+        append("}\n")
+        append("Correct Output in $targetLanguage:\n")
+        append("{\n")
+        append("  \"10\": \"<Full translation of cue 10 in $targetLanguage>\",\n")
+        append("  \"11\": \"<Full translation of cue 11 in $targetLanguage>\"\n")
+        append("}\n")
+        append("</system_instruction>\n\n")
+
+        // Scene & Storyline Context
+        if (contextDescription.isNotBlank()) {
+            append("<scene_context>\n")
+            append(contextDescription.trim())
+            append("\n</scene_context>\n\n")
+        }
+
+        // Character Bible
         val validChars = characters.filter { it.name.isNotBlank() }.take(SubtitleCharacter.MAX_CHARACTERS_COUNT)
         if (validChars.isNotEmpty()) {
-            append("### Characters in this Scene:\n")
+            append("<character_bible>\n")
             validChars.forEach { char ->
                 val desc = char.description.trim()
                 if (desc.isNotBlank()) {
@@ -64,39 +95,53 @@ data class SubtitlePreset(
                     append("- ${char.name.trim()}\n")
                 }
             }
-            append("\n")
+            append("</character_bible>\n\n")
         }
 
-        // 5. Rolling Dialogue Context
+        // Sliding Context Window (Reference Only)
         if (rollingContext.isNotEmpty()) {
-            append("### Previous Dialogue Context (For conversational continuity, tone, and pronoun consistency; DO NOT re-translate):\n")
+            append("<previous_context>\n")
+            append("(Reference ONLY for conversational continuity, tone, and pronoun consistency in $targetLanguage. DO NOT re-translate or include in output):\n")
             rollingContext.forEach { prev ->
-                append("- [Cue ${prev.id}]: ${prev.effectiveTranslation}\n")
+                append("[Cue ${prev.id}] ${prev.effectiveTranslation}\n")
             }
-            append("\n")
+            append("</previous_context>\n\n")
         }
 
-        // 6. Strict Output Schema
-        append("### Output Format Instructions:\n")
-        append("1. Maintain every cue ID strictly.\n")
-        append("2. Output MUST be a valid JSON array of objects: [{\"id\": <integer>, \"translated\": \"<string>\"}].\n")
-        append("3. Output ONLY the JSON array. Do not include markdown code block markers or any explanatory text.\n\n")
-
-        // 7. Cues Payload
-        append("### Cues to Translate:\n")
-        val inputJson = JSONArray()
+        // Compact Key-Value Cues Payload
+        append("<input_to_translate>\n")
+        val inputObj = JSONObject()
         cuesToTranslate.forEach { cue ->
-            val obj = JSONObject().apply {
-                put("id", cue.id)
-                put("text", cue.text)
-            }
-            inputJson.put(obj)
+            inputObj.put(cue.id.toString(), cue.text)
         }
-        append(inputJson.toString())
+        append(inputObj.toString(2))
+        append("\n</input_to_translate>")
     }
 
     /**
-     * Builds the formatted document translation prompt.
+     * Builds a fast targeted micro-retry prompt when the LLM drops specific cue keys.
+     */
+    fun buildMicroRetryPrompt(
+        targetLanguage: String,
+        missingCues: List<SubtitleCue>
+    ): String = buildString {
+        append("<system_instruction>\n")
+        append("Translate the following missing subtitle cues strictly into natural, authentic $targetLanguage.\n")
+        append("CRITICAL 1:1 ALIGNMENT RULE: Each JSON key corresponds to exactly one cue. The value for key \"<id>\" must be the complete translation of only that cue's text. Do NOT split sentences across keys or shift keys.\n")
+        append("Output ONLY a valid JSON object mapping original stringified integer IDs to translated strings: {\"<id>\": \"<translated text strictly in $targetLanguage>\"}.\n")
+        append("</system_instruction>\n\n")
+
+        append("<input_to_translate>\n")
+        val inputObj = JSONObject()
+        missingCues.forEach { cue ->
+            inputObj.put(cue.id.toString(), cue.text)
+        }
+        append(inputObj.toString(2))
+        append("\n</input_to_translate>")
+    }
+
+    /**
+     * Builds the formatted document translation prompt with strict syntax and layout preservation.
      */
     fun buildFormattedTextPrompt(
         text: String,
@@ -104,39 +149,47 @@ data class SubtitlePreset(
         contextDescription: String,
         customInstruction: String
     ): String = buildString {
+        append("<system_instruction>\n")
         append("You are an expert translator and software localization specialist.\n")
-        append("Translate the following content into natural, high-quality, authentic $targetLanguage.\n\n")
+        append("Translate the following document content into natural, high-quality, authentic $targetLanguage.\n\n")
 
-        val directives = if (isCustom && customInstruction.isNotBlank()) {
-            customInstruction.trim()
+        append("### TARGET LANGUAGE:\n")
+        append("Target Language: $targetLanguage\n")
+        append("CRITICAL: The entire translated output content MUST be written strictly in $targetLanguage.\n\n")
+
+        val processedCustom = replaceTargetLanguagePlaceholders(customInstruction, targetLanguage)
+        val directives = if (isCustom && processedCustom.isNotBlank()) {
+            processedCustom
         } else {
-            systemPromptDirectives.replace("%TARGET_LANG%", targetLanguage).trim()
+            replaceTargetLanguagePlaceholders(systemPromptDirectives, targetLanguage)
         }
         append("### Translation Style Directives:\n")
         append(directives)
         append("\n\n")
 
-        if (contextDescription.isNotBlank()) {
-            append("### Context & Scene Instructions:\n")
-            append(contextDescription.trim())
-            append("\n\n")
-        }
-
-        if (!isCustom && customInstruction.isNotBlank()) {
+        if (!isCustom && processedCustom.isNotBlank()) {
             append("### User Custom Instructions:\n")
-            append(customInstruction.trim())
+            append(processedCustom)
             append("\n\n")
         }
 
-        append("### CRITICAL FORMATTING & QUALITY DIRECTIVES:\n")
-        append("1. Remain the exact format of the text pasted. Preserve all JSON keys, syntax, indentation, Markdown headings, table formatting, bullet structures, LRC timestamps, code blocks, or HTML tags without altering them.\n")
-        append("2. Translate ONLY the natural language sentences, comments, prose, or phrase values.\n")
-        append("3. Avoid word-for-word robotic translation; prioritize natural, idiomatic phrasing that sounds authentic to native speakers.\n\n")
+        append("### CRITICAL FORMATTING & SYNTAX PRESERVATION RULES:\n")
+        append("1. Retain the EXACT format, indentation, whitespace, and structural syntax of the input document.\n")
+        append("2. Preserve all JSON keys, code syntax, variable names, Markdown headings, table borders, bullet symbols, LRC timestamps, and HTML tags without altering or translating them.\n")
+        append("3. Translate ONLY the natural language prose, comments, values, or lyrics into $targetLanguage.\n")
+        append("4. Avoid word-for-word robotic translation; prioritize natural, idiomatic phrasing that sounds authentic to native speakers of $targetLanguage.\n")
+        append("5. Output ONLY the translated document with no introductory remarks, conversational fillers, or surrounding markdown code fences (unless the source document was already a code block).\n")
+        append("</system_instruction>\n\n")
 
-        append("### Text to Translate:\n")
-        append("\"\"\"\n")
+        if (contextDescription.isNotBlank()) {
+            append("<context_notes>\n")
+            append(contextDescription.trim())
+            append("\n</context_notes>\n\n")
+        }
+
+        append("<document_to_translate>\n")
         append(text)
-        append("\n\"\"\"")
+        append("\n</document_to_translate>")
     }
 
     companion object {
@@ -294,6 +347,21 @@ Your mission is to translate narration and interviews into articulate, authorita
 
         fun getById(id: String?): SubtitlePreset {
             return ALL_PRESETS.firstOrNull { it.id.equals(id, ignoreCase = true) } ?: DEFAULT_PRESET
+        }
+
+        fun replaceTargetLanguagePlaceholders(text: String, targetLanguage: String): String {
+            if (text.isBlank()) return ""
+            return text
+                .replace("%TARGET_LANG%", targetLanguage, ignoreCase = true)
+                .replace("{TARGET_LANG}", targetLanguage, ignoreCase = true)
+                .replace("{TARGET_LANGUAGE}", targetLanguage, ignoreCase = true)
+                .replace("{target_lang}", targetLanguage, ignoreCase = true)
+                .replace("{target_language}", targetLanguage, ignoreCase = true)
+                .replace("[TARGET_LANG]", targetLanguage, ignoreCase = true)
+                .replace("[TARGET_LANGUAGE]", targetLanguage, ignoreCase = true)
+                .replace("\$TARGET_LANG", targetLanguage, ignoreCase = true)
+                .replace("\$TARGET_LANGUAGE", targetLanguage, ignoreCase = true)
+                .trim()
         }
     }
 }

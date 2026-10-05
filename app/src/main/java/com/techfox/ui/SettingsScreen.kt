@@ -170,7 +170,6 @@ fun SettingsScreen(
 
             val modelsList = state.availableModels.ifEmpty { PRESET_MODELS }
 
-            // Outlined dropdown labeled "Gemini Model" with leading neurology icon and supporting text
             ExposedDropdownMenuBox(
                 expanded = isModelDropdownExpanded,
                 onExpandedChange = { isModelDropdownExpanded = it },

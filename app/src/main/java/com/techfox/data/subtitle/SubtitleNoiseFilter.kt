@@ -19,8 +19,6 @@ object SubtitleNoiseFilter {
         "tsk", "tskk",
         "uh", "uhh", "uhm", "um", "umm", "ummm",
         "ugh", "ughh",
-        "wow", "woah", "whoa",
-        "yay", "yeah", "yep", "nah",
         "sigh", "sighs", "gasp", "gasps", "sob", "sobs",
         "groan", "groans", "whimper", "whimpers", "whimpering", "yawn", "yawns",
         "snicker", "snickers", "sniffle", "sniffles"
@@ -126,7 +124,7 @@ object SubtitleNoiseFilter {
      * Checks for elongated vocalizations like "hmmmmmmm", "aaaaaah", "haaaaa".
      */
     private fun isElongatedNoise(word: String): Boolean {
-        if (word.length <= 1) return true
+        if (word.length <= 1) return false
         val collapsed = word.replace(Regex("(.)\\1+"), "$1")
         return NOISE_SOUNDS.contains(collapsed) ||
                 REPEATING_SYLLABLE_REGEX.matcher(collapsed).matches()

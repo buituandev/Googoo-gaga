@@ -3,6 +3,11 @@ package com.techfox.data
 import android.content.Context
 import kotlinx.coroutines.flow.Flow
 
+data class TranslationWithWarning(
+    val entity: TranslationEntity,
+    val warning: String? = null
+)
+
 class TranslationRepository(context: Context) {
     private val db = AppDatabase.getDatabase(context)
     private val dao = db.translationDao()
@@ -11,7 +16,13 @@ class TranslationRepository(context: Context) {
 
     val translationHistory: Flow<List<TranslationEntity>> = dao.getAllTranslations()
 
-    suspend fun translateAndSave(text: String, targetLanguage: String): Result<TranslationEntity> {
+    suspend fun translateAndSave(
+        text: String,
+        targetLanguage: String,
+        isStrictRetry: Boolean = false,
+        previousWarning: String = "",
+        existingEntityId: Long? = null
+    ): Result<TranslationWithWarning> {
         val apiKey = preferences.getApiKey()
         val model = preferences.getModel()
         val customInstruction = preferences.getCustomInstruction()
@@ -23,11 +34,14 @@ class TranslationRepository(context: Context) {
             modelName = model,
             apiKey = apiKey,
             customInstruction = customInstruction,
-            enableInsight = enableInsight
+            enableInsight = enableInsight,
+            isStrictRetry = isStrictRetry,
+            previousReason = previousWarning
         )
 
         return result.map { output ->
             val entity = TranslationEntity(
+                id = existingEntityId ?: 0,
                 sourceText = output.sourceText,
                 targetLanguage = output.targetLanguage,
                 directTranslation = output.directTranslation,
@@ -35,7 +49,10 @@ class TranslationRepository(context: Context) {
                 keyTermsJson = KeyTermInsight.listToJson(output.keyTerms)
             )
             val id = dao.insertTranslation(entity)
-            entity.copy(id = id)
+            TranslationWithWarning(
+                entity = entity.copy(id = id),
+                warning = output.warning
+            )
         }
     }
 

@@ -8,8 +8,9 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-Android-3DDC84?logo=android&logoColor=white" alt="Platform" />
-  <img src="https://img.shields.io/badge/Min%20SDK-24%20(Android%207.0)-informational" alt="Min SDK" />
+  <img src="https://img.shields.io/badge/Min%20SDK-33%20(Android%2013)-informational" alt="Min SDK" />
   <img src="https://img.shields.io/badge/Target%20SDK-37-informational" alt="Target SDK" />
+  <img src="https://img.shields.io/badge/Version-1.3.0-blue" alt="Version" />
   <img src="https://img.shields.io/badge/Language-Kotlin-7F52FF?logo=kotlin&logoColor=white" alt="Kotlin" />
   <img src="https://img.shields.io/badge/UI-Jetpack%20Compose%20%7C%20Material%203-4285F4?logo=jetpackcompose&logoColor=white" alt="Jetpack Compose" />
   <img src="https://img.shields.io/badge/AI-Google%20Gemini-8E75FF?logo=google&logoColor=white" alt="Gemini" />
@@ -33,20 +34,46 @@ Unlike conventional machine translation tools that deliver literal word-for-word
   <table border="0">
     <tr>
       <td align="center" width="33%">
-        <img src="asset/Screenshot_20260907_175125_Goo-goo%20ga-ga.jpg" alt="Interactive Translation & Insights" width="100%" />
+        <img src="asset/sc (1).jpg" alt="Translation & Key Insights" width="100%" />
         <br />
-        <sub><b>Direct Translation & Cultural Nuances</b></sub>
+        <sub><b>Direct Translation & Cultural Breakdown</b></sub>
       </td>
       <td align="center" width="33%">
-        <img src="asset/Screenshot_20260907_175159_Goo-goo%20ga-ga.jpg" alt="Translation History" width="100%" />
+        <img src="asset/sc (2).jpg" alt="130+ Language Selector" width="100%" />
         <br />
-        <sub><b>Searchable Local History</b></sub>
+        <sub><b>Comprehensive 130+ Language Picker</b></sub>
       </td>
       <td align="center" width="33%">
-        <img src="asset/Screenshot_20260907_175206_Goo-goo%20ga-ga.jpg" alt="Settings & Model Selection" width="100%" />
+        <img src="asset/sc (3).jpg" alt="Subtitle Localization & Presets" width="100%" />
         <br />
-        <sub><b>API Key, Models & Directives</b></sub>
+        <sub><b>Subtitle & Document Translation</b></sub>
       </td>
+    </tr>
+    <tr>
+      <td align="center" width="33%">
+        <img src="asset/sc (4).jpg" alt="Synchronized Subtitle Preview" width="100%" />
+        <br />
+        <sub><b>Synchronized Subtitle Player Preview</b></sub>
+      </td>
+      <td align="center" width="33%">
+        <img src="asset/sc (5).jpg" alt="Searchable History" width="100%" />
+        <br />
+        <sub><b>Searchable Local Translation History</b></sub>
+      </td>
+      <td align="center" width="33%">
+        <img src="asset/sc (6).jpg" alt="Settings & Model Config" width="100%" />
+        <br />
+        <sub><b>API Key, Models & Token Guard</b></sub>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" width="33%">
+        <img src="asset/sc (7).jpg" alt="Direct Translation UI" width="100%" />
+        <br />
+        <sub><b>Fluid Spoken Translations</b></sub>
+      </td>
+      <td align="center" width="33%"></td>
+      <td align="center" width="33%"></td>
     </tr>
   </table>
 </div>

@@ -44,6 +44,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.techfox.R
@@ -61,6 +62,7 @@ fun SubtitlePreviewBottomSheet(
     cues: List<SubtitleCue>,
     rawText: String,
     onExportFile: () -> Unit,
+    isTokenGuardEnabled: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     if (!visible) return
@@ -155,6 +157,8 @@ fun SubtitlePreviewBottomSheet(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(cues, key = { it.id }) { cue ->
+                            val showGuardBadge = isTokenGuardEnabled && cue.isNoise && (cue.translatedText == null || cue.translatedText == cue.text)
+
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = TextFieldShape,
@@ -169,21 +173,25 @@ fun SubtitlePreviewBottomSheet(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
-                                            text = "#${cue.id}  •  ${cue.startTime} ➔ ${cue.endTime}",
-                                            style = MaterialTheme.typography.labelMedium,
+                                            text = "#${cue.id} • ${cue.startTime} ➔ ${cue.endTime}",
+                                            style = MaterialTheme.typography.labelSmall,
                                             fontFamily = FontFamily.Monospace,
                                             color = MaterialTheme.colorScheme.primary,
-                                            fontWeight = FontWeight.SemiBold
+                                            fontWeight = FontWeight.SemiBold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.weight(1f, fill = false)
                                         )
 
-                                        if (cue.isNoise) {
+                                        if (showGuardBadge) {
+                                            Spacer(modifier = Modifier.width(8.dp))
                                             Surface(
                                                 shape = PillShape,
                                                 color = MaterialTheme.colorScheme.secondaryContainer
                                             ) {
                                                 Row(
                                                     modifier = Modifier.padding(
-                                                        horizontal = 6.dp,
+                                                        horizontal = 8.dp,
                                                         vertical = 2.dp
                                                     ),
                                                     verticalAlignment = Alignment.CenterVertically
@@ -197,8 +205,13 @@ fun SubtitlePreviewBottomSheet(
                                                     Spacer(modifier = Modifier.width(4.dp))
                                                     Text(
                                                         text = stringResource(R.string.badge_noise_guard),
-                                                        style = MaterialTheme.typography.labelSmall,
-                                                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                                                        style = MaterialTheme.typography.labelSmall.copy(
+                                                            fontSize = 11.sp,
+                                                            fontWeight = FontWeight.Medium
+                                                        ),
+                                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                                        maxLines = 1,
+                                                        softWrap = false
                                                     )
                                                 }
                                             }

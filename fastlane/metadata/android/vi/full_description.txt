@@ -1,8 +1,11 @@
 Goo-goo ga-ga là ứng dụng dịch thuật thông minh mã nguồn mở sử dụng Google Gemini và nhận diện ngôn ngữ offline với Lingua.
 
+Lưu ý: Ứng dụng yêu cầu API key Google Gemini cá nhân để sử dụng các tính năng dịch thuật (bạn có thể nhận API key miễn phí từ Google AI Studio).
+
 Tính năng nổi bật:
 - Dịch văn bản trực tiếp với định dạng trình bày thông minh, dễ đọc.
 - Giải nghĩa ngữ cảnh sâu sắc: Phân tích thành ngữ, từ lóng, thuật ngữ và sắc thái văn hóa.
 - Dịch phụ đề SRT/VTT: Tải và dịch file phụ đề với trình phát đồng bộ trực quan.
 - Dịch nhanh từ menu chọn văn bản hệ thống (Process Text).
 - Bảo mật quyền riêng tư: API Key được lưu an toàn trên thiết bị của bạn.
+

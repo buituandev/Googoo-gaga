@@ -5,6 +5,7 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.techfox.R
+import com.techfox.data.PreferencesManager
 import com.techfox.data.subtitle.InputFormat
 import com.techfox.data.subtitle.SubtitleCharacter
 import com.techfox.data.subtitle.SubtitleCue
@@ -12,6 +13,7 @@ import com.techfox.data.subtitle.SubtitleJobEntity
 import com.techfox.data.subtitle.SubtitleParser
 import com.techfox.data.subtitle.SubtitlePreset
 import com.techfox.data.subtitle.SubtitleRepository
+import com.techfox.data.subtitle.SubtitleTranslatorService
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,6 +31,9 @@ data class SubtitleUiState(
     // Subtitle Tone Preset & Custom Directives
     val selectedPreset: SubtitlePreset = SubtitlePreset.DEFAULT_PRESET,
     val customPrompt: String = "",
+
+    // Token Guard Option
+    val enableTokenGuard: Boolean = true,
 
     // Translation Progress Tracking
     val isTranslating: Boolean = false,
@@ -62,35 +67,124 @@ class SubtitleViewModel(application: Application) : AndroidViewModel(application
     private fun getString(@StringRes resId: Int): String =
         getApplication<Application>().getString(resId)
 
-    private fun getString(@StringRes resId: Int, vararg formatArgs: Any): String =
-        getApplication<Application>().getString(resId, *formatArgs)
-
     init {
         val savedLang = repository.preferences.getTargetLanguage()
         val savedPresetId = repository.preferences.getSubtitlePresetId()
         val savedCustomPrompt = repository.preferences.getCustomSubtitlePrompt()
+        val savedTokenGuard = repository.preferences.isTokenGuardEnabled()
         _uiState.value = _uiState.value.copy(
-            targetLanguage = if (savedLang.isNotBlank()) savedLang else "Vietnamese",
+            targetLanguage = savedLang.ifBlank { "Vietnamese" },
             selectedPreset = SubtitlePreset.getById(savedPresetId),
-            customPrompt = savedCustomPrompt
+            customPrompt = savedCustomPrompt,
+            enableTokenGuard = savedTokenGuard
         )
         checkLatestResumableJob()
+        observePreferences()
+    }
+
+    fun reloadSettings() {
+        val savedLang = repository.preferences.getTargetLanguage()
+        val savedPresetId = repository.preferences.getSubtitlePresetId()
+        val savedCustomPrompt = repository.preferences.getCustomSubtitlePrompt()
+        val savedTokenGuard = repository.preferences.isTokenGuardEnabled()
+        _uiState.value = _uiState.value.copy(
+            targetLanguage = savedLang.ifBlank { "Vietnamese" },
+            selectedPreset = SubtitlePreset.getById(savedPresetId),
+            customPrompt = savedCustomPrompt,
+            enableTokenGuard = savedTokenGuard
+        )
+        recalculateNoisePreserved()
+        checkResumableJobForCurrentInput()
+    }
+
+    private fun observePreferences() {
+        viewModelScope.launch {
+            PreferencesManager.preferenceChangedFlow.collect { key ->
+                when (key) {
+                    PreferencesManager.KEY_TARGET_LANGUAGE -> {
+                        val newLang = repository.preferences.getTargetLanguage()
+                        if (_uiState.value.targetLanguage != newLang) {
+                            _uiState.value = _uiState.value.copy(targetLanguage = newLang)
+                            checkResumableJobForCurrentInput()
+                        }
+                    }
+                    PreferencesManager.KEY_SUBTITLE_PRESET_ID -> {
+                        val newPresetId = repository.preferences.getSubtitlePresetId()
+                        val newPreset = SubtitlePreset.getById(newPresetId)
+                        if (_uiState.value.selectedPreset != newPreset) {
+                            _uiState.value = _uiState.value.copy(selectedPreset = newPreset)
+                        }
+                    }
+                    PreferencesManager.KEY_CUSTOM_SUBTITLE_PROMPT -> {
+                        val newPrompt = repository.preferences.getCustomSubtitlePrompt()
+                        if (_uiState.value.customPrompt != newPrompt) {
+                            _uiState.value = _uiState.value.copy(customPrompt = newPrompt)
+                        }
+                    }
+                    PreferencesManager.KEY_ENABLE_TOKEN_GUARD -> {
+                        val newGuard = repository.preferences.isTokenGuardEnabled()
+                        if (_uiState.value.enableTokenGuard != newGuard) {
+                            _uiState.value = _uiState.value.copy(enableTokenGuard = newGuard)
+                            recalculateNoisePreserved()
+                            checkResumableJobForCurrentInput()
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private fun checkLatestResumableJob() {
         viewModelScope.launch {
             val job = repository.getLatestActiveJob()
-            if (job != null && job.status == "PAUSED") {
-                _uiState.value = _uiState.value.copy(resumableJob = job)
+            if (job != null && job.status != "COMPLETED" && (job.completedChunks > 0 || job.completedCues > 0)) {
+                val format = try { InputFormat.valueOf(job.format) } catch (e: Exception) { InputFormat.SUBTITLE_SRT }
+                val cues = SubtitleJobEntity.deserializeCues(job.cuesJson)
+                val originalText = job.originalContent.ifBlank {
+                    if (format == InputFormat.SUBTITLE_VTT) {
+                        SubtitleParser.assembleVtt(cues.map { it.copy(translatedText = null) })
+                    } else {
+                        SubtitleParser.assembleSrt(cues.map { it.copy(translatedText = null) })
+                    }
+                }
+                val characters = SubtitleJobEntity.deserializeCharacters(job.charactersJson)
+
+                if (_uiState.value.inputText.isBlank()) {
+                    _uiState.value = _uiState.value.copy(
+                        inputText = originalText,
+                        fileName = job.fileName,
+                        detectedFormat = format,
+                        targetLanguage = job.targetLanguage,
+                        contextDescription = job.contextDescription,
+                        characters = characters,
+                        noiseCuesPreserved = job.noiseCuesCount,
+                        completedCues = job.completedCues,
+                        totalCues = job.totalCues,
+                        currentChunk = job.completedChunks,
+                        totalChunks = job.totalChunks,
+                        resumableJob = job
+                    )
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        detectedFormat = format,
+                        resumableJob = job
+                    )
+                }
             }
         }
     }
 
     fun onInputTextChanged(text: String) {
         val format = SubtitleParser.detectFormat(text, _uiState.value.fileName)
+        val noiseCount = if (format.isSubtitle && _uiState.value.enableTokenGuard && text.isNotBlank()) {
+            SubtitleParser.parseSubtitle(text, format).getOrNull()?.count { it.isNoise } ?: 0
+        } else {
+            0
+        }
         _uiState.value = _uiState.value.copy(
             inputText = text,
             detectedFormat = format,
+            noiseCuesPreserved = noiseCount,
             errorMessage = null
         )
         checkResumableJobForCurrentInput()
@@ -98,10 +192,16 @@ class SubtitleViewModel(application: Application) : AndroidViewModel(application
 
     fun onFileLoaded(fileName: String, content: String) {
         val format = SubtitleParser.detectFormat(content, fileName)
+        val noiseCount = if (format.isSubtitle && _uiState.value.enableTokenGuard && content.isNotBlank()) {
+            SubtitleParser.parseSubtitle(content, format).getOrNull()?.count { it.isNoise } ?: 0
+        } else {
+            0
+        }
         _uiState.value = _uiState.value.copy(
             fileName = fileName,
             inputText = content,
             detectedFormat = format,
+            noiseCuesPreserved = noiseCount,
             errorMessage = null
         )
         checkResumableJobForCurrentInput()
@@ -109,19 +209,46 @@ class SubtitleViewModel(application: Application) : AndroidViewModel(application
 
     private fun checkResumableJobForCurrentInput() {
         val state = _uiState.value
-        if (state.inputText.isBlank()) return
+        if (state.inputText.isBlank()) {
+            _uiState.value = _uiState.value.copy(resumableJob = null)
+            return
+        }
 
         val jobId = repository.computeJobId(
             content = state.inputText,
             fileName = state.fileName ?: "pasted_text",
-            targetLang = state.targetLanguage
+            targetLang = state.targetLanguage,
+            enableTokenGuard = state.enableTokenGuard
         )
 
         viewModelScope.launch {
             val job = repository.getJobById(jobId)
-            if (job != null && job.status == "PAUSED") {
+            if (job != null && job.status != "COMPLETED" && (job.completedChunks > 0 || job.completedCues > 0)) {
                 _uiState.value = _uiState.value.copy(resumableJob = job)
+            } else {
+                _uiState.value = _uiState.value.copy(resumableJob = null)
             }
+        }
+    }
+
+    fun onTokenGuardChanged(enabled: Boolean) {
+        _uiState.value = _uiState.value.copy(enableTokenGuard = enabled)
+        repository.preferences.setTokenGuardEnabled(enabled)
+        recalculateNoisePreserved()
+        checkResumableJobForCurrentInput()
+    }
+
+    private fun recalculateNoisePreserved() {
+        val state = _uiState.value
+        if (state.detectedFormat.isSubtitle && state.inputText.isNotBlank()) {
+            val parseResult = SubtitleParser.parseSubtitle(state.inputText, state.detectedFormat)
+            if (parseResult.isSuccess) {
+                val cues = parseResult.getOrThrow()
+                val noiseCount = if (state.enableTokenGuard) cues.count { it.isNoise } else 0
+                _uiState.value = _uiState.value.copy(noiseCuesPreserved = noiseCount)
+            }
+        } else {
+            _uiState.value = _uiState.value.copy(noiseCuesPreserved = 0)
         }
     }
 
@@ -185,7 +312,8 @@ class SubtitleViewModel(application: Application) : AndroidViewModel(application
         val jobId = repository.computeJobId(
             content = text,
             fileName = state.fileName ?: "pasted_text",
-            targetLang = state.targetLanguage
+            targetLang = state.targetLanguage,
+            enableTokenGuard = state.enableTokenGuard
         )
 
         val activePreset = state.selectedPreset
@@ -205,16 +333,20 @@ class SubtitleViewModel(application: Application) : AndroidViewModel(application
             }
 
             val cues = parseResult.getOrThrow()
-            val noiseCount = cues.count { it.isNoise }
-            val translatableCount = cues.size - noiseCount
-            val estimatedChunks = ((translatableCount + 34) / 35).coerceAtLeast(1)
+            val noiseCount = if (state.enableTokenGuard) cues.count { it.isNoise } else 0
+            val allTranslatableIndices = cues.indices.filter {
+                if (state.enableTokenGuard) !cues[it].isNoise else true
+            }
+            val smartChunks = SubtitleTranslatorService.createSmartChunks(allTranslatableIndices, cues)
+            val estimatedChunks = smartChunks.size.coerceAtLeast(1)
 
+            val existingResumable = state.resumableJob
             _uiState.value = _uiState.value.copy(
                 isTranslating = true,
                 isCompleted = false,
-                currentChunk = 0,
-                totalChunks = estimatedChunks,
-                completedCues = 0,
+                currentChunk = existingResumable?.completedChunks ?: 0,
+                totalChunks = existingResumable?.totalChunks ?: estimatedChunks,
+                completedCues = existingResumable?.completedCues ?: 0,
                 totalCues = cues.size,
                 noiseCuesPreserved = noiseCount,
                 errorMessage = null,
@@ -232,6 +364,7 @@ class SubtitleViewModel(application: Application) : AndroidViewModel(application
                     characters = state.characters,
                     preset = activePreset,
                     customInstruction = customInstruction,
+                    enableTokenGuard = state.enableTokenGuard,
                     onProgress = { chunkIndex, totalChunks, completed, total, noise ->
                         _uiState.value = _uiState.value.copy(
                             currentChunk = chunkIndex,
@@ -302,10 +435,7 @@ class SubtitleViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun resumeTranslation() {
-        val job = _uiState.value.resumableJob ?: return
-        val cues = SubtitleJobEntity.deserializeCues(job.cuesJson)
-        val format = try { InputFormat.valueOf(job.format) } catch (e: Exception) { InputFormat.SUBTITLE_SRT }
-
+        val activeJob = _uiState.value.resumableJob
         val activePreset = _uiState.value.selectedPreset
         val customInstruction = if (activePreset.isCustom) {
             _uiState.value.customPrompt
@@ -313,19 +443,37 @@ class SubtitleViewModel(application: Application) : AndroidViewModel(application
             repository.preferences.getCustomInstruction()
         }
 
-        _uiState.value = _uiState.value.copy(
-            isTranslating = true,
-            isCompleted = false,
-            currentChunk = job.completedChunks,
-            totalChunks = job.totalChunks,
-            completedCues = job.completedCues,
-            totalCues = job.totalCues,
-            noiseCuesPreserved = job.noiseCuesCount,
-            errorMessage = null,
-            resumableJob = null
-        )
-
         translationJob = viewModelScope.launch {
+            val job = activeJob ?: repository.getLatestActiveJob() ?: return@launch
+            val cues = SubtitleJobEntity.deserializeCues(job.cuesJson)
+            val format = try { InputFormat.valueOf(job.format) } catch (e: Exception) { InputFormat.SUBTITLE_SRT }
+            val characters = SubtitleJobEntity.deserializeCharacters(job.charactersJson)
+            val originalText = job.originalContent.ifBlank {
+                if (format == InputFormat.SUBTITLE_VTT) {
+                    SubtitleParser.assembleVtt(cues.map { it.copy(translatedText = null) })
+                } else {
+                    SubtitleParser.assembleSrt(cues.map { it.copy(translatedText = null) })
+                }
+            }
+
+            _uiState.value = _uiState.value.copy(
+                inputText = if (_uiState.value.inputText.isBlank()) originalText else _uiState.value.inputText,
+                fileName = _uiState.value.fileName ?: job.fileName,
+                detectedFormat = format,
+                targetLanguage = job.targetLanguage,
+                contextDescription = if (_uiState.value.contextDescription.isBlank()) job.contextDescription else _uiState.value.contextDescription,
+                characters = if (_uiState.value.characters.isEmpty()) characters else _uiState.value.characters,
+                isTranslating = true,
+                isCompleted = false,
+                currentChunk = job.completedChunks,
+                totalChunks = job.totalChunks,
+                completedCues = job.completedCues,
+                totalCues = job.totalCues,
+                noiseCuesPreserved = job.noiseCuesCount,
+                errorMessage = null,
+                resumableJob = null
+            )
+
             val result = repository.translateSubtitleWithCheckpoints(
                 jobId = job.jobId,
                 fileName = job.fileName,
@@ -333,9 +481,10 @@ class SubtitleViewModel(application: Application) : AndroidViewModel(application
                 cues = cues,
                 targetLanguage = job.targetLanguage,
                 contextDescription = job.contextDescription,
-                characters = SubtitleJobEntity.deserializeCharacters(job.charactersJson),
+                characters = characters,
                 preset = activePreset,
                 customInstruction = customInstruction,
+                enableTokenGuard = _uiState.value.enableTokenGuard,
                 onProgress = { chunkIndex, totalChunks, completed, total, noise ->
                     _uiState.value = _uiState.value.copy(
                         currentChunk = chunkIndex,
@@ -383,11 +532,22 @@ class SubtitleViewModel(application: Application) : AndroidViewModel(application
 
     fun cancelTranslation() {
         translationJob?.cancel()
-        _uiState.value = _uiState.value.copy(
-            isTranslating = false,
-            errorMessage = getString(R.string.msg_translation_stopped)
+        val state = _uiState.value
+        val jobId = repository.computeJobId(
+            content = state.inputText,
+            fileName = state.fileName ?: "pasted_text",
+            targetLang = state.targetLanguage,
+            enableTokenGuard = state.enableTokenGuard
         )
-        checkLatestResumableJob()
+        viewModelScope.launch {
+            repository.pauseJob(jobId, getString(R.string.msg_translation_stopped))
+            val pausedJob = repository.getJobById(jobId)
+            _uiState.value = _uiState.value.copy(
+                isTranslating = false,
+                errorMessage = getString(R.string.msg_translation_stopped),
+                resumableJob = if (pausedJob != null && (pausedJob.completedChunks > 0 || pausedJob.completedCues > 0)) pausedJob else null
+            )
+        }
     }
 
     fun clearInput() {

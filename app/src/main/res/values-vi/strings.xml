@@ -49,8 +49,8 @@
     <string name="empty_translation_hint">Nhập văn bản và dịch để xem bản dịch và ngữ nghĩa.</string>
     <string name="translating_status">Phân tích bản dịch...</string>
     <string name="label_custom_instruction">Thêm hướng dẫn cho AI</string>
-    <string name="supporting_custom_instruction">Hướng dẫn cách dịch mong muốn cho AI</string>
-    <string name="placeholder_custom_instruction">Ví dụ: dịch một cách hài hước, hoặc dịch theo teen code và hơn thế nữa...</string>
+    <string name="supporting_custom_instruction">Chỉ thị sẽ được áp dụng khi dịch sang ngôn ngữ đích đã chọn.</string>
+    <string name="placeholder_custom_instruction">Ví dụ: Dùng tiếng lóng đường phố tự nhiên, giữ giọng điệu hài hước hoặc văn phong trang trọng…</string>
     <string name="option_custom_value">Tùy chỉnh...</string>
     <string name="dialog_title_custom_language">Nhập ngôn ngữ tùy chỉnh</string>
     <string name="dialog_title_custom_model">Nhập mô hình tùy chỉnh</string>
@@ -114,6 +114,10 @@
     <string name="btn_discard">Hủy bỏ</string>
     <string name="btn_export_file">Xuất tệp</string>
     <string name="btn_copy_output">Sao chép</string>
+    <string name="label_token_guard">Bảo vệ Token (Tiết kiệm token)</string>
+    <string name="label_direct_translation_no_guard">Dịch trực tiếp (Không dùng Guard)</string>
+    <string name="desc_token_guard_on">Giữ nguyên các dòng âm thanh, tiếng ồn (tiếng cười, nhạc, thở dài...) không tốn token AI.</string>
+    <string name="desc_token_guard_off">Dịch toàn bộ từng dòng phụ đề qua AI, bao gồm cả âm thanh cảm thán và hiệu ứng.</string>
     <string name="token_guard_active">Tiết kiệm token: %1$d dòng âm thanh/tiếng ồn được giữ nguyên không tốn token</string>
     <string name="resumable_job_title">Phát hiện bản dịch chưa hoàn thành</string>
     <string name="resumable_job_desc">Đã lưu tiến độ cho %1$s: hoàn thành %2$d trên %3$d phần.</string>
@@ -188,4 +192,6 @@
     <string name="btn_all_done">All done!</string>
     <string name="btn_skip_for_now">Bỏ qua lúc này</string>
     <string name="cd_next_screen">Tiếp theo</string>
+    <string name="warning_imprecise_translation">Bản dịch này có thể không chính xác. Thử lại?</string>
+    <string name="btn_retry">Thử lại</string>
 </resources>

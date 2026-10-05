@@ -121,7 +121,7 @@ interface SubtitleJobDao {
     @Query("SELECT * FROM subtitle_jobs WHERE jobId = :jobId LIMIT 1")
     suspend fun getJobById(jobId: String): SubtitleJobEntity?
 
-    @Query("SELECT * FROM subtitle_jobs WHERE status IN ('IN_PROGRESS', 'PAUSED') ORDER BY updatedAt DESC LIMIT 1")
+    @Query("SELECT * FROM subtitle_jobs WHERE status IN ('IN_PROGRESS', 'PAUSED', 'FAILED') AND (completedChunks > 0 OR completedCues > 0) ORDER BY updatedAt DESC LIMIT 1")
     suspend fun getLatestActiveJob(): SubtitleJobEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

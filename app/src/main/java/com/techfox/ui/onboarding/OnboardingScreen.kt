@@ -4,20 +4,15 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +26,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -49,12 +47,11 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,6 +59,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -69,6 +67,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import com.techfox.R
@@ -76,6 +75,8 @@ import com.techfox.ui.components.ExpressiveButton
 import com.techfox.ui.components.ExpressiveIconButton
 import com.techfox.ui.theme.PillShape
 import com.techfox.ui.theme.TextFieldShape
+import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 @Composable
 fun OnboardingScreen(
@@ -83,11 +84,14 @@ fun OnboardingScreen(
     onComplete: (apiKey: String) -> Unit,
     onClose: (() -> Unit)? = null,
 ) {
-    var currentStep by remember { mutableIntStateOf(0) }
+    val pagerState = rememberPagerState(pageCount = { 2 })
+    val coroutineScope = rememberCoroutineScope()
     var apiKeyInput by remember { mutableStateOf("") }
 
-    BackHandler(enabled = currentStep > 0) {
-        currentStep = 0
+    BackHandler(enabled = pagerState.currentPage > 0) {
+        coroutineScope.launch {
+            pagerState.animateScrollToPage(0)
+        }
     }
 
     Surface(
@@ -99,105 +103,127 @@ fun OnboardingScreen(
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             ShapeMorphingPatternBackground(
-                currentStep = currentStep,
+                currentStep = pagerState.currentPage,
                 modifier = Modifier.fillMaxSize()
             )
 
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-            // Top Navigation & Step Indicator
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                if (currentStep > 0) {
-                    ExpressiveIconButton(
-                        onClick = { currentStep = 0 },
-                        icon = Icons.AutoMirrored.Rounded.ArrowBack,
-                        contentDescription = stringResource(R.string.cd_back),
-                        size = 40.dp
-                    )
-                } else if (onClose != null) {
-                    ExpressiveIconButton(
-                        onClick = onClose,
-                        icon = Icons.AutoMirrored.Rounded.ArrowBack,
-                        contentDescription = stringResource(R.string.cd_back),
-                        size = 40.dp
-                    )
-                } else {
-                    Spacer(modifier = Modifier.size(40.dp))
-                }
-
-                // Step Dots
+                // Top Navigation & Step Indicator (Symmetric layout so position is identical across screens)
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    repeat(2) { index ->
-                        val isSelected = index == currentStep
-                        Box(
-                            modifier = Modifier
-                                .height(6.dp)
-                                .width(if (isSelected) 24.dp else 8.dp)
-                                .clip(PillShape)
-                                .background(
-                                    if (isSelected) MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.surfaceContainerHighest
-                                )
-                        )
+                    Box(
+                        modifier = Modifier.size(40.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (pagerState.currentPage > 0) {
+                            ExpressiveIconButton(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        pagerState.animateScrollToPage(0)
+                                    }
+                                },
+                                icon = Icons.AutoMirrored.Rounded.ArrowBack,
+                                contentDescription = stringResource(R.string.cd_back),
+                                size = 40.dp
+                            )
+                        } else if (onClose != null) {
+                            ExpressiveIconButton(
+                                onClick = onClose,
+                                icon = Icons.AutoMirrored.Rounded.ArrowBack,
+                                contentDescription = stringResource(R.string.cd_back),
+                                size = 40.dp
+                            )
+                        }
                     }
-                }
 
-                // Skip button on Step 2
-                if (currentStep == 1) {
-                    TextButton(onClick = { onComplete("") }) {
-                        Text(
-                            text = stringResource(R.string.btn_skip_for_now),
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                    }
-                } else {
+                    // Animated Page Indicator
+                    AnimatedPageIndicator(
+                        pagerState = pagerState,
+                        pageCount = 2,
+                        onDotClicked = { targetPage ->
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(targetPage)
+                            }
+                        }
+                    )
+
+                    // Spacer with the same width as the back button for symmetrical centering
                     Spacer(modifier = Modifier.size(40.dp))
                 }
-            }
 
-            // Screen Content Transitions
-            AnimatedContent(
-                targetState = currentStep,
-                transitionSpec = {
-                    if (targetState > initialState) {
-                        slideInHorizontally { width -> width } + fadeIn() togetherWith
-                                slideOutHorizontally { width -> -width } + fadeOut()
-                    } else {
-                        slideInHorizontally { width -> -width } + fadeIn() togetherWith
-                                slideOutHorizontally { width -> width } + fadeOut()
+                // Horizontal Pager for swipeable screens
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) { page ->
+                    when (page) {
+                        0 -> WelcomeStep(
+                            onNext = {
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(1)
+                                }
+                            }
+                        )
+
+                        1 -> SetupStep(
+                            apiKey = apiKeyInput,
+                            onApiKeyChanged = { apiKeyInput = it },
+                            onDone = { onComplete(apiKeyInput) }
+                        )
                     }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                label = "OnboardingStepTransition"
-            ) { step ->
-                when (step) {
-                    0 -> WelcomeStep(
-                        onNext = { currentStep = 1 }
-                    )
-
-                    1 -> SetupStep(
-                        apiKey = apiKeyInput,
-                        onApiKeyChanged = { apiKeyInput = it },
-                        onDone = { onComplete(apiKeyInput) }
-                    )
                 }
             }
         }
     }
 }
+
+@Composable
+private fun AnimatedPageIndicator(
+    pagerState: PagerState,
+    pageCount: Int,
+    modifier: Modifier = Modifier,
+    onDotClicked: ((Int) -> Unit)? = null
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        repeat(pageCount) { index ->
+            val continuousPage = pagerState.currentPage + pagerState.currentPageOffsetFraction
+            val distance = abs(continuousPage - index).coerceIn(0f, 1f)
+
+            val animatedWidth = lerp(24.dp, 8.dp, distance)
+            val animatedColor = lerp(
+                MaterialTheme.colorScheme.primary,
+                MaterialTheme.colorScheme.surfaceContainerHighest,
+                distance
+            )
+
+            Box(
+                modifier = Modifier
+                    .height(6.dp)
+                    .width(animatedWidth)
+                    .clip(PillShape)
+                    .background(animatedColor)
+                    .then(
+                        if (onDotClicked != null) {
+                            Modifier.clickable { onDotClicked(index) }
+                        } else Modifier
+                    )
+            )
+        }
+    }
 }
 
 @Composable

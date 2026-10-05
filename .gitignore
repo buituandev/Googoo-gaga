@@ -16,3 +16,13 @@
 local.properties
 .env
 debug.keystore
+# Build & release outputs
+*.apk
+*.aab
+/release
+/app/release/
+baselineProfiles/
+
+# Test directories
+**/src/test/
+**/src/androidTest/

@@ -1,1 +1,7 @@
 /build
+/release
+*.apk
+*.aab
+/src/test/
+/src/androidTest/
+

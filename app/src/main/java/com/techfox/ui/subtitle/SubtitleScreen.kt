@@ -11,7 +11,9 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircle
@@ -39,6 +42,7 @@ import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.Subtitles
+import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -52,6 +56,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -92,6 +97,7 @@ fun SubtitleScreen(
     onContextChanged: (String) -> Unit,
     onPresetSelected: (SubtitlePreset) -> Unit = {},
     onCustomPromptChanged: (String) -> Unit = {},
+    onTokenGuardChanged: (Boolean) -> Unit = {},
     onAddCharacter: () -> Unit,
     onUpdateCharacter: (String, String, String) -> Unit,
     onRemoveCharacter: (String) -> Unit,
@@ -364,32 +370,76 @@ fun SubtitleScreen(
                 maxLines = 15
             )
 
-            // Token Guard Notice (Directly on screen if active)
-            if (state.detectedFormat.isSubtitle && state.noiseCuesPreserved > 0) {
+            // Token Guard Option & Notice (When Subtitle format is detected)
+            AnimatedVisibility(
+                visible = state.detectedFormat.isSubtitle,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
                 Surface(
                     shape = TextFieldShape,
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Shield,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = stringResource(
-                                R.string.token_guard_active,
-                                state.noiseCuesPreserved
-                            ),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        Row(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(end = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .background(
+                                        if (state.enableTokenGuard) MaterialTheme.colorScheme.primaryContainer
+                                        else MaterialTheme.colorScheme.surfaceContainerHighest,
+                                        CircleShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (state.enableTokenGuard) Icons.Rounded.Shield else Icons.Rounded.Translate,
+                                    contentDescription = null,
+                                    tint = if (state.enableTokenGuard) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = if (state.enableTokenGuard) stringResource(R.string.label_token_guard)
+                                    else stringResource(R.string.label_direct_translation_no_guard),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = if (state.enableTokenGuard) {
+                                        if (state.noiseCuesPreserved > 0) {
+                                            stringResource(R.string.token_guard_active, state.noiseCuesPreserved)
+                                        } else {
+                                            stringResource(R.string.desc_token_guard_on)
+                                        }
+                                    } else {
+                                        stringResource(R.string.desc_token_guard_off)
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        Switch(
+                            checked = state.enableTokenGuard,
+                            onCheckedChange = onTokenGuardChanged,
+                            modifier = Modifier.testTag("token_guard_switch")
                         )
                     }
                 }
@@ -401,13 +451,11 @@ fun SubtitleScreen(
                 onTargetLanguageChanged = onTargetLanguageChanged
             )
 
-            // 4. Tone Preset Selector (Directly on screen, not inside a Card)
             SubtitlePresetDropdownSelector(
                 selectedPreset = state.selectedPreset,
                 onPresetSelected = onPresetSelected
             )
 
-            // Custom Directives Input: Shown directly on screen when CUSTOM preset is selected
             AnimatedVisibility(
                 visible = state.selectedPreset.isCustom,
                 enter = fadeIn() + expandVertically(),
@@ -789,6 +837,7 @@ fun SubtitleScreen(
             format = state.detectedFormat,
             cues = state.translatedCues,
             rawText = state.translatedOutputText,
+            isTokenGuardEnabled = state.enableTokenGuard,
             onExportFile = {
                 contentToExport = state.translatedOutputText
                 val suggestedName =

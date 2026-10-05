@@ -3,16 +3,13 @@ package com.techfox.data.subtitle
 import android.content.Context
 import com.techfox.data.AppDatabase
 import com.techfox.data.PreferencesManager
-import kotlinx.coroutines.flow.Flow
 import java.security.MessageDigest
 
-class SubtitleRepository(private val context: Context) {
+class SubtitleRepository(context: Context) {
     private val db = AppDatabase.getDatabase(context)
     private val jobDao = db.subtitleJobDao()
     private val translatorService = SubtitleTranslatorService()
     val preferences = PreferencesManager(context)
-
-    val activeJobs: Flow<List<SubtitleJobEntity>> = jobDao.getAllJobs()
 
     suspend fun getLatestActiveJob(): SubtitleJobEntity? = jobDao.getLatestActiveJob()
 
@@ -21,13 +18,25 @@ class SubtitleRepository(private val context: Context) {
     suspend fun deleteJob(jobId: String) = jobDao.deleteJobById(jobId)
 
     /**
-     * Compute a deterministic unique Job ID based on the file content/name and target language,
-     * preventing collision across different files while enabling instant pickup for the same file.
+     * Compute a deterministic unique Job ID based on the file content/name, target language,
+     * and token guard mode, preventing collision while enabling instant pickup.
      */
-    fun computeJobId(content: String, fileName: String, targetLang: String): String {
-        val raw = "$fileName:$targetLang:${content.take(500)}:${content.length}"
-        val bytes = MessageDigest.getInstance("SHA-256").digest(raw.toByteArray())
+    fun computeJobId(content: String, fileName: String, targetLang: String, enableTokenGuard: Boolean = true): String {
+        val raw = "$fileName:$targetLang:$enableTokenGuard:${content.take(500)}:${content.length}"
+        val bytes = MessageDigest.getInstance("SHA-256").digest(raw.toByteArray(Charsets.UTF_8))
         return bytes.joinToString("") { "%02x".format(it) }.take(16)
+    }
+
+    suspend fun pauseJob(jobId: String, errorMessage: String? = null) {
+        val existing = jobDao.getJobById(jobId) ?: return
+        if (existing.status != "COMPLETED") {
+            val paused = existing.copy(
+                status = "PAUSED",
+                errorMessage = errorMessage ?: existing.errorMessage,
+                updatedAt = System.currentTimeMillis()
+            )
+            jobDao.saveJob(paused)
+        }
     }
 
     /**
@@ -43,6 +52,7 @@ class SubtitleRepository(private val context: Context) {
         characters: List<SubtitleCharacter>,
         preset: SubtitlePreset = SubtitlePreset.DEFAULT_PRESET,
         customInstruction: String = preferences.getCustomInstruction(),
+        enableTokenGuard: Boolean = preferences.isTokenGuardEnabled(),
         onProgress: suspend (currentChunk: Int, totalChunks: Int, completedCues: Int, totalCues: Int, noiseCues: Int) -> Unit
     ): Result<List<SubtitleCue>> {
         val apiKey = preferences.getApiKey()
@@ -50,22 +60,38 @@ class SubtitleRepository(private val context: Context) {
 
         // Check if there is an existing job to resume from
         val existingJob = jobDao.getJobById(jobId)
-        val startingChunk = if (existingJob != null && existingJob.status == "PAUSED") {
-            existingJob.completedChunks
-        } else {
-            0
-        }
+        val hasCheckpoint = existingJob != null &&
+            existingJob.status != "COMPLETED" &&
+            existingJob.cuesJson.isNotBlank() &&
+            (existingJob.completedChunks > 0 || existingJob.completedCues > 0)
 
-        val workingCues = if (existingJob != null && existingJob.cuesJson.isNotBlank() && startingChunk > 0) {
+        val workingCues = if (hasCheckpoint) {
             val savedCues = SubtitleJobEntity.deserializeCues(existingJob.cuesJson)
             if (savedCues.size == cues.size) savedCues else cues
         } else {
             cues
         }
 
-        val noiseCount = workingCues.count { it.isNoise }
-        val translatableCount = workingCues.size - noiseCount
-        val estimatedTotalChunks = ((translatableCount + 34) / 35).coerceAtLeast(1)
+        val noiseCount = if (enableTokenGuard) workingCues.count { it.isNoise } else 0
+        val allTranslatableIndices = workingCues.indices.filter {
+            if (enableTokenGuard) !workingCues[it].isNoise else true
+        }
+        val smartChunks = SubtitleTranslatorService.createSmartChunks(allTranslatableIndices, workingCues)
+        val estimatedTotalChunks = smartChunks.size.coerceAtLeast(1)
+
+        val startingChunk = if (hasCheckpoint) {
+            val firstIncomplete = smartChunks.indexOfFirst { chunkIndices ->
+                chunkIndices.any { workingCues[it].translatedText == null }
+            }
+            if (firstIncomplete != -1) firstIncomplete else 0
+        } else {
+            0
+        }
+
+        val originalRawText = existingJob?.originalContent?.takeIf { it.isNotBlank() } ?: (
+            if (format == InputFormat.SUBTITLE_VTT) SubtitleParser.assembleVtt(cues)
+            else SubtitleParser.assembleSrt(cues)
+        )
 
         // Save initial job state as IN_PROGRESS
         val initialJob = SubtitleJobEntity(
@@ -75,7 +101,7 @@ class SubtitleRepository(private val context: Context) {
             targetLanguage = targetLanguage,
             contextDescription = contextDescription,
             charactersJson = SubtitleJobEntity.serializeCharacters(characters),
-            originalContent = "",
+            originalContent = originalRawText,
             cuesJson = SubtitleJobEntity.serializeCues(workingCues),
             totalChunks = estimatedTotalChunks,
             completedChunks = startingChunk,
@@ -97,6 +123,7 @@ class SubtitleRepository(private val context: Context) {
             preset = preset,
             chunkSize = 35,
             startingChunkIndex = startingChunk,
+            enableTokenGuard = enableTokenGuard,
             onChunkProgress = { chunkIndex, totalChunks, currentCues ->
                 val completedCuesCount = currentCues.count { it.translatedText != null }
                 // Checkpoint auto-save into Room DB
@@ -120,7 +147,8 @@ class SubtitleRepository(private val context: Context) {
             val validation = SubtitleParser.validateDoubleCheck(cues, finalCues)
             if (validation.isFailure) {
                 val error = validation.exceptionOrNull() ?: Exception("Subtitle validation failed")
-                val pausedJob = initialJob.copy(
+                val latestState = jobDao.getJobById(jobId) ?: initialJob
+                val pausedJob = latestState.copy(
                     status = "FAILED",
                     errorMessage = error.localizedMessage
                 )
@@ -147,10 +175,12 @@ class SubtitleRepository(private val context: Context) {
             Result.success(finalCues)
         } else {
             val error = translationResult.exceptionOrNull() ?: Exception("Translation failed")
-            // Save state as PAUSED so user can resume at the right chunk without conflicts
-            val pausedJob = initialJob.copy(
+            // Preserve the latest saved progress in Room DB instead of resetting to initialJob
+            val latestState = jobDao.getJobById(jobId) ?: initialJob
+            val pausedJob = latestState.copy(
                 status = "PAUSED",
-                errorMessage = error.localizedMessage
+                errorMessage = error.localizedMessage,
+                updatedAt = System.currentTimeMillis()
             )
             jobDao.saveJob(pausedJob)
             Result.failure(error)

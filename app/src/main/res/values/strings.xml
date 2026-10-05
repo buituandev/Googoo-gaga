@@ -48,8 +48,8 @@
     <string name="empty_translation_hint">Enter text above and tap Translate to reveal translation and insights.</string>
     <string name="translating_status">Analyzing linguistic insights…</string>
     <string name="label_custom_instruction">Custom System Instructions</string>
-    <string name="supporting_custom_instruction">Override default translation behavior, tone, style, or focus</string>
-    <string name="placeholder_custom_instruction">e.g. Translate into informal street slang, or strictly formal business phrasing…</string>
+    <string name="supporting_custom_instruction">Directives will be applied when translating into your chosen target language.</string>
+    <string name="placeholder_custom_instruction">e.g. Translate into informal street slang, preserve humor, or use strictly formal business phrasing…</string>
     <string name="option_custom_value">Custom…</string>
     <string name="dialog_title_custom_language">Enter Custom Language</string>
     <string name="dialog_title_custom_model">Enter Custom Model</string>
@@ -113,6 +113,10 @@
     <string name="btn_discard">Discard</string>
     <string name="btn_export_file">Export File</string>
     <string name="btn_copy_output">Copy</string>
+    <string name="label_token_guard">Token Guard (Save Tokens)</string>
+    <string name="label_direct_translation_no_guard">Direct Translation (No Guard)</string>
+    <string name="desc_token_guard_on">Preserve vocal sounds and noise lines (laughter, music, sighs) without spending AI tokens.</string>
+    <string name="desc_token_guard_off">Translate every subtitle line directly using AI, including vocal sounds and background effects.</string>
     <string name="token_guard_active">Token Guard: %1$d vocal/noise lines preserved without AI tokens</string>
     <string name="resumable_job_title">Unfinished Translation Detected</string>
     <string name="resumable_job_desc">Saved checkpoint for %1$s: %2$d of %3$d chunks completed.</string>
@@ -153,7 +157,7 @@
     <string name="label_subtitle_preset">Tone Preset</string>
     <string name="desc_subtitle_preset">Choose translation persona or style directives</string>
     <string name="custom_prompt_label">Custom AI Directives</string>
-    <string name="custom_prompt_placeholder">e.g., You are a medieval fantasy translator. Use poetic, archaic English, translate honorifics gracefully…</string>
+    <string name="custom_prompt_placeholder">e.g., You are a medieval fantasy translator. Use poetic, archaic tone, translate honorifics gracefully…</string>
     <string name="preset_cinematic_name">Cinematic Standard</string>
     <string name="preset_cinematic_desc">Netflix &amp; HBO standard. Spoken dialogue, anti-literal, punchy.</string>
     <string name="preset_thriller_name">Thriller &amp; Crime Drama</string>
@@ -187,4 +191,6 @@
     <string name="btn_all_done">All done!</string>
     <string name="btn_skip_for_now">Skip for now</string>
     <string name="cd_next_screen">Next</string>
+    <string name="warning_imprecise_translation">This translation may be inaccurate. Retry?</string>
+    <string name="btn_retry">Retry</string>
 </resources>

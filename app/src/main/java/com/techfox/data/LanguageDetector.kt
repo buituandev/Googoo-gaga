@@ -14,7 +14,38 @@ import kotlinx.coroutines.withContext
 object LanguageDetector {
     private val linguaDetector: LinguaDetector by lazy {
         LanguageDetectorBuilder
-            .fromAllSpokenLanguages()
+            .fromLanguages(
+                Language.ENGLISH,
+                Language.VIETNAMESE,
+                Language.FRENCH,
+                Language.SPANISH,
+                Language.GERMAN,
+                Language.JAPANESE,
+                Language.CHINESE,
+                Language.KOREAN,
+                Language.ITALIAN,
+                Language.PORTUGUESE,
+                Language.RUSSIAN,
+                Language.HINDI,
+                Language.ARABIC,
+                Language.THAI,
+                Language.INDONESIAN,
+                Language.POLISH,
+                Language.TURKISH,
+                Language.DUTCH,
+                Language.SWEDISH,
+                Language.UKRAINIAN,
+                Language.CZECH,
+                Language.GREEK,
+                Language.HEBREW,
+                Language.DANISH,
+                Language.FINNISH,
+                Language.BOKMAL,
+                Language.NYNORSK,
+                Language.ROMANIAN,
+                Language.HUNGARIAN,
+                Language.TAGALOG
+            )
             .withLowAccuracyMode()
             .build()
     }
@@ -39,6 +70,17 @@ object LanguageDetector {
         "ai", "gi", "gì", "sao", "nao", "nào", "the", "thế", "nhe", "nhé", "nha", "co", "có"
     )
 
+    private val TRADITIONAL_CHINESE_CHARS = setOf(
+        '關', '注', '謝', '滅', '雛', '體', '國', '學', '時', '會', '為', '點', '發', '說', '開', '經', '與', '頭',
+        '對', '動', '進', '過', '樣', '種', '邊', '現', '讓', '幾', '處', '門', '見', '話', '長', '產', '業', '實',
+        '寫', '買', '賣', '錢', '愛', '車', '電', '機', '風', '飛', '無', '萬', '條', '員', '聽', '辦', '親', '變',
+        '網', '裏', '後', '這', '麼', '個', '們', '來', '傳', '優', '傷', '價', '儀', '億', '兒', '黨', '兩', '內'
+    )
+
+    private val TRADITIONAL_CHINESE_WORDS = listOf(
+        "關注", "謝謝", "不滅", "雛草姬", "台灣", "香港", "繁體", "傳統", "這個", "什麼", "我們", "他們", "沒有", "問題"
+    )
+
     /**
      * Identifies the language of the given text using Lingua on-device model,
      * falling back to script/character heuristic analysis when Lingua returns UNKNOWN or encounters an error.
@@ -48,6 +90,108 @@ object LanguageDetector {
      */
     suspend fun identifyLanguage(text: String): String = withContext(Dispatchers.Default) {
         identify(text)
+    }
+
+    /**
+     * Detects source language for prompt instruction, prioritizing script analysis for short or CJK text.
+     * Returns a human-readable display name (e.g. "Chinese (Traditional)", "Japanese", "English")
+     * or "Unknown; identify it carefully before translating." if completely uncertain.
+     */
+    fun detectSourceLanguage(text: String): String {
+        val trimmed = text.trim()
+        if (trimmed.isEmpty()) return "Unknown; identify it carefully before translating."
+
+        // 1. Script-based priority detection (md.md §2)
+        // Japanese: Hiragana / Katakana
+        if (trimmed.any { it in '\u3040'..'\u309F' || it in '\u30A0'..'\u30FF' }) {
+            return "Japanese"
+        }
+
+        // Korean: Hangul
+        if (trimmed.any { it in '\uAC00'..'\uD7AF' || it in '\u1100'..'\u11FF' || it in '\u3130'..'\u318F' }) {
+            return "Korean"
+        }
+
+        // Chinese / Hanzi: CJK Ideographs
+        if (trimmed.any { it in '\u4E00'..'\u9FFF' || it in '\u3400'..'\u4DBF' }) {
+            val hasTraditionalWord = TRADITIONAL_CHINESE_WORDS.any { trimmed.contains(it) }
+            val hasTraditionalChar = trimmed.any { it in TRADITIONAL_CHINESE_CHARS }
+            return if (hasTraditionalWord || hasTraditionalChar) {
+                "Chinese (Traditional)"
+            } else {
+                "Chinese (Simplified)"
+            }
+        }
+
+        // Cyrillic / Russian
+        if (trimmed.any { it in '\u0400'..'\u04FF' }) {
+            return "Russian"
+        }
+
+        // Arabic
+        if (trimmed.any { it in '\u0600'..'\u06FF' || it in '\u0750'..'\u077F' }) {
+            return "Arabic"
+        }
+
+        // Thai
+        if (trimmed.any { it in '\u0E00'..'\u0E7F' }) {
+            return "Thai"
+        }
+
+        // Hindi / Devanagari
+        if (trimmed.any { it in '\u0900'..'\u097F' }) {
+            return "Hindi"
+        }
+
+        // Vietnamese specific diacritics
+        if (trimmed.any { "đĐơƠưƯàáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộùúủũụỳýỷỹỵ".contains(it, ignoreCase = true) }) {
+            return "Vietnamese"
+        }
+
+        // 2. Statistical / Common Dictionary detection
+        val identifiedCode = identify(trimmed)
+        val displayName = isoCodeToDisplayName(identifiedCode)
+        if (displayName.isNotBlank()) {
+            return displayName
+        }
+
+        return "Unknown; identify it carefully before translating."
+    }
+
+    /**
+     * Maps an ISO-639-1 code to a clean English display name for prompting.
+     */
+    fun isoCodeToDisplayName(code: String): String = when (code.lowercase(Locale.ROOT)) {
+        "en" -> "English"
+        "vi" -> "Vietnamese"
+        "fr" -> "French"
+        "es" -> "Spanish"
+        "de" -> "German"
+        "ja" -> "Japanese"
+        "zh" -> "Chinese"
+        "ko" -> "Korean"
+        "it" -> "Italian"
+        "pt" -> "Portuguese"
+        "ru" -> "Russian"
+        "hi" -> "Hindi"
+        "ar" -> "Arabic"
+        "th" -> "Thai"
+        "id" -> "Indonesian"
+        "pl" -> "Polish"
+        "tr" -> "Turkish"
+        "nl" -> "Dutch"
+        "sv" -> "Swedish"
+        "uk" -> "Ukrainian"
+        "cs" -> "Czech"
+        "el" -> "Greek"
+        "he" -> "Hebrew"
+        "da" -> "Danish"
+        "fi" -> "Finnish"
+        "no" -> "Norwegian"
+        "ro" -> "Romanian"
+        "hu" -> "Hungarian"
+        "fil", "tl" -> "Filipino"
+        else -> ""
     }
 
     /**
